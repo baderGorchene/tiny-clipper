@@ -1,0 +1,612 @@
+diff --git a/app.py b/app.py
+index 1860395..95c99b0 100644
+--- a/app.py
++++ b/app.py
+@@ -2769,6 +2769,139 @@ async def get_config():
+         "localLlm": None if BILLING_ENABLED else llm_backend.describe(),
+     }
+ 
++
++# --- self-host quick setup ---------------------------------------------------
++# Lets the Settings page test a key and save the backup bucket, so nobody has
++# to edit .env by hand. Cloud never exposes these: they touch server config.
++
++SETUP_KEY_CHECKS = {
++    # service: (url that lists models, auth header, header value prefix)
++    "gemini": ("https://generativelanguage.googleapis.com/v1beta/models", "x-goog-api-key", ""),
++    "groq": ("https://api.groq.com/openai/v1/models", "Authorization", "Bearer "),
++}
++STORAGE_ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
++
++
++def _require_self_host(request: Request, writes: bool = False):
++    if BILLING_ENABLED:
++        raise HTTPException(status_code=404, detail="Not found")
++    if writes and not setup_client_is_local(
++            request.client.host if request.client else "",
++            request.headers.get("X-Forwarded-For") or ""):
++        raise HTTPException(status_code=403, detail=(
++            "Saving server settings only works from the machine running OpenShorts "
++            "(or your local network). Edit .env on the server instead."))
++
++
++def setup_client_is_local(client_host: str, forwarded_for: str) -> bool:
++    """True when the caller and every proxy hop are loopback/private addresses.
++    ponytail: a public reverse proxy that strips X-Forwarded-For would pass;
++    add a setup password if self-hosts get exposed that way."""
++    import ipaddress
++    hosts = [client_host] + [h.strip() for h in forwarded_for.split(",") if h.strip()]
++    try:
++        return all(ipaddress.ip_address(h).is_private or ipaddress.ip_address(h).is_loopback
++                   for h in hosts)
++    except ValueError:
++        return client_host == "testclient" and not forwarded_for  # FastAPI TestClient
++
++
++class SetupKeyCheck(BaseModel):
++    service: str
++    key: str
++
++
++class SetupStorage(BaseModel):
++    endpoint: str = ""
++    accessKeyId: str
++    secretAccessKey: str
++    bucket: str
++
++
++@app.get("/api/setup/status")
++async def setup_status(request: Request):
++    """What the server already has, never the values themselves."""
++    _require_self_host(request)
++    # .env.example ships "your_aws_access_key_here"-style placeholders.
++    has_storage = all((os.environ.get(k) or "your").lower()[:4] != "your"
++                      for k in ("AWS_ACCESS_KEY_ID", "AWS_S3_BUCKET"))
++    return {
++        "geminiOnServer": bool(os.environ.get("GEMINI_API_KEY")),
++        "groqOnServer": bool(os.environ.get("GROQ_API_KEY")),
++        "storage": {
++            "bucket": os.environ.get("AWS_S3_BUCKET") if has_storage else None,
++            "endpoint": os.environ.get("AWS_ENDPOINT_URL") or "",
++        },
++        "retentionHours": JOB_RETENTION_SECONDS // 3600,
++    }
++
++
++@app.post("/api/setup/check-key")
++async def setup_check_key(body: SetupKeyCheck, request: Request):
++    """Ask the provider whether the key works, in words a non-developer gets."""
++    _require_self_host(request)
++    check = SETUP_KEY_CHECKS.get(body.service)
++    key = body.key.strip()
++    if not check or not key:
++        raise HTTPException(status_code=400, detail="Unknown service or empty key")
++    url, header, prefix = check
++    import httpx
++    try:
++        async with httpx.AsyncClient(timeout=15) as client:
++            resp = await client.get(url, headers={header: prefix + key})
++    except httpx.HTTPError:
++        return {"ok": False, "detail": "Couldn't reach the provider. Check your internet connection."}
++    if resp.status_code == 200:
++        return {"ok": True, "detail": "Key works."}
++    if resp.status_code == 429:
++        return {"ok": True, "detail": "Key works, but its free quota is used up for now."}
++    if resp.status_code in (400, 401, 403):
++        return {"ok": False, "detail": "This key was rejected. Copy it again from the provider's page."}
++    return {"ok": False, "detail": f"The provider answered {resp.status_code}. Try again in a minute."}
++
++
++@app.post("/api/setup/storage")
++async def setup_storage(body: SetupStorage, request: Request):
++    """Test the bucket first, then save it to .env so clips are backed up
++    after every job (upload_job_artifacts reads these env vars)."""
++    _require_self_host(request, writes=True)
++    endpoint = body.endpoint.strip().rstrip("/")
++    if endpoint and not endpoint.startswith("https://"):
++        raise HTTPException(status_code=400, detail="The endpoint must start with https://")
++    values = {
++        "AWS_ENDPOINT_URL": endpoint,
++        "AWS_ACCESS_KEY_ID": body.accessKeyId.strip(),
++        "AWS_SECRET_ACCESS_KEY": body.secretAccessKey.strip(),
++        "AWS_S3_BUCKET": body.bucket.strip(),
++        # R2/B2/MinIO take any region; "auto" is what R2 documents.
++        "AWS_REGION": "auto" if endpoint else (os.environ.get("AWS_REGION") or "eu-west-3"),
++    }
++    if not all(values[k] for k in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_S3_BUCKET")):
++        raise HTTPException(status_code=400, detail="Fill in the key ID, the secret and the bucket name")
++
++    def _test_bucket():
++        import boto3
++        boto3.client("s3", endpoint_url=endpoint or None,
++                     aws_access_key_id=values["AWS_ACCESS_KEY_ID"],
++                     aws_secret_access_key=values["AWS_SECRET_ACCESS_KEY"],
++                     region_name=values["AWS_REGION"]).head_bucket(Bucket=values["AWS_S3_BUCKET"])
++
++    try:
++        await asyncio.get_event_loop().run_in_executor(None, _test_bucket)
++    except Exception as e:
++        return {"ok": False, "detail": f"Couldn't open that bucket. Check the values. ({str(e)[:160]})"}
++
++    from dotenv import set_key, unset_key
++    open(STORAGE_ENV_PATH, "a").close()
++    for name, value in values.items():
++        if value:
++            os.environ[name] = value
++            set_key(STORAGE_ENV_PATH, name, value)
++        else:
++            os.environ.pop(name, None)
++            unset_key(STORAGE_ENV_PATH, name)
++    return {"ok": True, "detail": "Connected. Every finished job is now backed up to this bucket."}
++
+ async def _probe_youtube_quality(url: str) -> dict:
+     """Run quality_probe.py in a worker thread; {} on any failure (fail-open)."""
+     def _run():
+@@ -3215,6 +3348,9 @@ async def process_endpoint(
+         env.pop("GEMINI_API_KEY", None)  # local-LLM job: main.py must not find a stale key
+     if not BILLING_ENABLED:
+         env.update(perf_env(request.headers.get("X-Perf-Settings") or ""))
++        groq_key = (request.headers.get("X-Groq-Key") or "").strip()
++        if groq_key:
++            env["GROQ_API_KEY"] = groq_key  # hosted transcription, no local model
+     if llm_chain:
+         env["LLM_PROVIDERS"] = json.dumps([
+             {"baseUrl": p["base_url"], "model": p["model"], "apiKey": p["api_key"]}
+diff --git a/transcribe_backends.py b/transcribe_backends.py
+index e2d488f..28bfd78 100644
+--- a/transcribe_backends.py
++++ b/transcribe_backends.py
+@@ -633,6 +633,17 @@ GROQ_TRANSCRIBE_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
+ # 20-min chunks of 32 kbps mono opus are ~5 MB, well under Groq's 25 MB
+ # free-tier upload cap. A word cut by a chunk seam is the known ceiling.
+ GROQ_CHUNK_SECONDS = 1200
++GROQ_RETRIES = 4
++
++
++def groq_retry_wait(retry_after, attempt):
++    """Seconds to wait after a 429: the server's retry-after when it gives one,
++    else exponential backoff; capped at 10 minutes either way."""
++    try:
++        wait = float(retry_after)
++    except (TypeError, ValueError):
++        wait = 15 * 2 ** attempt
++    return max(1.0, min(wait, 600.0))
+ 
+ 
+ def groq_api_key():
+@@ -685,12 +696,20 @@ def _transcribe_with_groq(media_path):
+         chunks = []
+         with httpx.Client(timeout=300) as client:
+             for i, name in enumerate(names):
+-                with open(os.path.join(workdir, name), "rb") as f:
+-                    resp = client.post(
+-                        GROQ_TRANSCRIBE_URL, headers={"Authorization": f"Bearer {key}"},
+-                        files={"file": (name, f, "audio/ogg")},
+-                        data={"model": model, "response_format": "verbose_json",
+-                              "timestamp_granularities[]": ["word", "segment"]})
++                for attempt in range(GROQ_RETRIES + 1):
++                    with open(os.path.join(workdir, name), "rb") as f:
++                        resp = client.post(
++                            GROQ_TRANSCRIBE_URL, headers={"Authorization": f"Bearer {key}"},
++                            files={"file": (name, f, "audio/ogg")},
++                            data={"model": model, "response_format": "verbose_json",
++                                  "timestamp_granularities[]": ["word", "segment"]})
++                    if resp.status_code != 429 or attempt == GROQ_RETRIES:
++                        break
++                    # Free tier caps audio-seconds per hour: wait it out rather
++                    # than drop to a slow local whisper mid-video.
++                    wait = groq_retry_wait(resp.headers.get("retry-after"), attempt)
++                    print(f"⏳ [ASR] groq rate limit, retrying chunk {i + 1} in {wait:.0f}s", flush=True)
++                    time.sleep(wait)
+                 if resp.status_code >= 400:
+                     raise RuntimeError(f"Groq {resp.status_code}: {resp.text[:200]}")
+                 chunks.append((i * GROQ_CHUNK_SECONDS, resp.json()))
+diff --git a/dashboard/src/App.jsx b/dashboard/src/App.jsx
+index 6d1f5c9..822b9e3 100644
+--- a/dashboard/src/App.jsx
++++ b/dashboard/src/App.jsx
+@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
+ import { Upload, Sparkles, Youtube, Instagram, Share2, ChevronDown, Check, Activity, LayoutDashboard, Settings, Plus, History, X, Terminal, Shield, LayoutGrid, Image, Globe, RotateCcw, Calendar, AlertTriangle, KeyRound, Bot, Users, Smartphone, ExternalLink, Copy, CheckCircle2, Mail, Loader2, Download, Menu, Lock, Rocket } from 'lucide-react';
+ import LlmProviders from './components/LlmProviders';
+ import PerfSettings from './components/PerfSettings';
+-import KeyInput from './components/KeyInput';
++import QuickSetup from './components/QuickSetup';
+ import MediaInput from './components/MediaInput';
+ import McpConnectCard from './components/McpConnectCard';
+ import ResultCard from './components/ResultCard';
+@@ -307,6 +307,8 @@ function App() {
+     if (stored) return decrypt(stored);
+     return '';
+   });
++  // Groq key for hosted transcription (self-host) - Load encrypted
++  const [groqKey, setGroqKey] = useState(() => decrypt(localStorage.getItem('groqKey_v1') || ''));
+ 
+   // Fallback chain of OpenAI-compatible providers (self-host) - Load encrypted
+   const [llmProviders, setLlmProviders] = useState(() => {
+@@ -767,6 +769,10 @@ function App() {
+     }
+   }, [elevenLabsKey]);
+ 
++  useEffect(() => {
++    if (groqKey) localStorage.setItem('groqKey_v1', encrypt(groqKey));
++  }, [groqKey]);
++
+   useEffect(() => {
+     if (falKey) {
+       localStorage.setItem('falKey_v1', encrypt(falKey));
+@@ -1088,6 +1094,7 @@ function App() {
+       if (!billingEnabled && Object.keys(perfSettings).length) {
+         headers['X-Perf-Settings'] = JSON.stringify(perfSettings);
+       }
++      if (!billingEnabled && groqKey) headers['X-Groq-Key'] = groqKey;
+ 
+       // Advanced generation controls: only sent when the user set them, so the
+       // default request stays byte-identical to the pre-feature one.
+@@ -1611,7 +1618,9 @@ function App() {
+               </div>
+               {/* Self-hosted installs have no account page, so the agent
+                   how-to lives here; cloud users get it (with OAuth) in Account. */}
+-              {!billingEnabled && <div className="mb-6"><McpConnectCard cloud={false} /></div>}
++              {!billingEnabled && (
++                <QuickSetup geminiKey={apiKey} onGeminiKey={setApiKey} groqKey={groqKey} onGroqKey={setGroqKey} />
++              )}
+               {isManaged ? (
+                 <div className="card p-6 mb-2">
+                   <div className="flex items-center justify-between mb-3">
+@@ -1657,7 +1666,8 @@ function App() {
+                 </div>
+               ) : (
+                 <>
+-              <KeyInput onKeySet={setApiKey} savedKey={apiKey} />
++              <p className="eyebrow mb-2">ADVANCED · OPTIONAL</p>
++              <McpConnectCard cloud={false} />
+ 
+               <LlmProviders providers={llmProviders} onChange={setLlmProviders} />
+ 
+diff --git a/dashboard/src/components/PerfSettings.jsx b/dashboard/src/components/PerfSettings.jsx
+index cc3c8ab..d630049 100644
+--- a/dashboard/src/components/PerfSettings.jsx
++++ b/dashboard/src/components/PerfSettings.jsx
+@@ -11,7 +11,7 @@ const FIELDS = [
+   { key: 'WHISPER_COMPUTE', label: 'Compute type', options: ['int8', 'int8_float16', 'float16', 'float32'],
+     hint: 'CPU: int8. GPU: float16.' },
+   { key: 'TRANSCRIBE_BACKEND', label: 'Transcription backend', options: ['whisper', 'parakeet', 'groq'],
+-    hint: 'groq: hosted Whisper, very fast, free tier; uses the key of your Groq provider above. parakeet: ~2x faster on GPU image. Both fall back to local whisper.' },
++    hint: 'groq: hosted Whisper, very fast, free tier; uses your Groq key from Quick setup (picked automatically when one is set). parakeet: ~2x faster on GPU image. Both fall back to local whisper.' },
+   { key: 'LLM_SCORE_BATCH', label: 'AI windows per call', min: 1, max: 20,
+     hint: 'Other providers default to 3. Strong models (70B) can take 8: fewer calls, fewer rate limits.' },
+   { key: 'CLIP_WORKERS', label: 'Clips rendered at once', min: 1, max: 16,
+diff --git a/dashboard/src/components/ResultCard.jsx b/dashboard/src/components/ResultCard.jsx
+index 1258c09..e5be98b 100644
+--- a/dashboard/src/components/ResultCard.jsx
++++ b/dashboard/src/components/ResultCard.jsx
+@@ -95,8 +95,29 @@ export default function ResultCard({ clip, index, jobId, durable, uploadPostKey,
+     // fetch-then-save took minutes with nothing on screen, which reads as a dead
+     // button. Stream it instead and report progress.
+     const [downloadPct, setDownloadPct] = useState(null);
++    // Phones: the system share sheet hands the clip straight to the TikTok,
++    // Instagram or YouTube app (or "Save video"), no API or key needed.
++    // Desktop keeps the plain download.
++    const canShareFiles = typeof navigator !== 'undefined' && !!navigator.canShare
++        && !!window.matchMedia?.('(pointer: coarse)').matches;
++    const [shareFile, setShareFile] = useState(null);
++
++    // True when the share sheet handled it (shared, cancelled, or parked for a second tap).
++    const shareClip = async (file) => {
++        try {
++            await navigator.share({ files: [file] });
++        } catch (err) {
++            // A long fetch outlives the tap's user activation; keep the file so
++            // one more tap opens the sheet instantly.
++            if (err.name === 'NotAllowedError') { setShareFile(file); return true; }
++            if (err.name !== 'AbortError') return false;
++        }
++        setShareFile(null);
++        return true;
++    };
+ 
+     const downloadClip = async () => {
++        if (shareFile) { await shareClip(shareFile); return; }
+         try {
+             setDownloadPct(0);
+             const response = await fetch(currentVideoUrl);
+@@ -120,6 +141,10 @@ export default function ResultCard({ clip, index, jobId, durable, uploadPostKey,
+                 }
+                 blob = new Blob(chunks, { type: 'video/mp4' });
+             }
++            if (canShareFiles) {
++                const file = new File([blob], `clip-${index + 1}.mp4`, { type: 'video/mp4' });
++                if (navigator.canShare({ files: [file] }) && await shareClip(file)) return;
++            }
+             const url = window.URL.createObjectURL(blob);
+             const a = document.createElement('a');
+             a.style.display = 'none';
+@@ -993,7 +1018,7 @@ export default function ResultCard({ clip, index, jobId, durable, uploadPostKey,
+                         className={`${QUIET_BTN}${onEditClip ? ' col-span-2' : ''}`}
+                     >
+                         <Download size={16} className="text-muted group-hover:text-brass transition-colors shrink-0" />
+-                        {downloadPct === null ? 'download' : `downloading ${downloadPct}%`}
++                        {downloadPct !== null ? `downloading ${downloadPct}%` : shareFile ? 'tap to share' : canShareFiles ? 'share / save' : 'download'}
+                     </button>
+                 </div>
+             </div>
+diff --git a/dashboard/src/components/QuickSetup.jsx b/dashboard/src/components/QuickSetup.jsx
+new file mode 100644
+index 0000000..bfac162
+--- /dev/null
++++ b/dashboard/src/components/QuickSetup.jsx
+@@ -0,0 +1,241 @@
++import React, { useEffect, useState } from 'react';
++import { Check, Eye, EyeOff, ExternalLink, Loader2, ChevronDown, HardDrive } from 'lucide-react';
++import { apiFetch } from '../lib/api';
++
++// Self-host first-run card: the two keys that matter and an optional backup,
++// each with a free-key link and a real test against the provider.
++const KEYS = [
++  {
++    service: 'gemini', title: 'Gemini key', badge: 'Required',
++    what: 'Finds the best moments in your video and writes the titles.',
++    link: 'https://aistudio.google.com/app/apikey', linkLabel: 'Get a free key at Google AI Studio',
++    how: 'Sign in with Google → "Create API key" → copy it here.', placeholder: 'AIza...',
++  },
++  {
++    service: 'groq', title: 'Groq key', badge: 'Recommended',
++    what: 'Turns speech into captions in seconds, for free, without a powerful computer.',
++    link: 'https://console.groq.com/keys', linkLabel: 'Get a free key at Groq',
++    how: 'Sign up → "Create API Key" → copy it here.', placeholder: 'gsk_...',
++  },
++];
++
++const BUCKETS = {
++  r2: { label: 'Cloudflare R2 (10 GB free)', endpoint: 'https://<account-id>.r2.cloudflarestorage.com', link: 'https://dash.cloudflare.com/?to=/:account/r2' },
++  b2: { label: 'Backblaze B2 (10 GB free)', endpoint: 'https://s3.<region>.backblazeb2.com', link: 'https://secure.backblaze.com/b2_buckets.htm' },
++  aws: { label: 'Amazon S3', endpoint: '', link: 'https://s3.console.aws.amazon.com/s3/' },
++  other: { label: 'Other S3-compatible (MinIO…)', endpoint: 'https://', link: null },
++};
++
++function Result({ result }) {
++  if (!result) return null;
++  return (
++    <p role="status" className={`text-xs mt-2 ${result.ok ? 'text-ok' : 'text-warn'}`}>
++      {result.ok ? '✓ ' : '✗ '}{result.detail}
++    </p>
++  );
++}
++
++function KeyStep({ step, n, value, onSave, onServer }) {
++  const [draft, setDraft] = useState(value || '');
++  const [show, setShow] = useState(false);
++  const [busy, setBusy] = useState(false);
++  const [result, setResult] = useState(null);
++  const done = !!value || onServer;
++
++  useEffect(() => { setDraft(value || ''); }, [value]);
++
++  const save = async () => {
++    const key = draft.trim();
++    if (!key) return;
++    setBusy(true);
++    setResult(null);
++    try {
++      const res = await apiFetch('/api/setup/check-key', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({ service: step.service, key }),
++      });
++      const data = await res.json();
++      setResult(data);
++      if (data.ok) onSave(key);
++    } catch {
++      // Server unreachable: keep the key anyway, the job will tell if it's wrong.
++      onSave(key);
++      setResult({ ok: true, detail: 'Saved (could not test it right now).' });
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  return (
++    <li className="flex gap-3 sm:gap-4">
++      <span className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-medium ${done ? 'bg-ok text-paper' : 'bg-paper3 text-ink2'}`}>
++        {done ? <Check size={14} /> : n}
++      </span>
++      <div className="flex-1 min-w-0 pb-6">
++        <div className="flex flex-wrap items-center gap-2">
++          <h3 className="text-sm font-medium text-ink">{step.title}</h3>
++          <span className="readout">{step.badge}</span>
++        </div>
++        <p className="text-xs text-muted mt-1">{step.what}</p>
++        {onServer && !value && (
++          <p className="text-xs text-ok mt-1">Already set on the server. You can skip this step.</p>
++        )}
++        <a href={step.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-brass underline mt-2">
++          {step.linkLabel} <ExternalLink size={11} />
++        </a>
++        <p className="text-xs text-muted">{step.how}</p>
++        <form className="flex flex-col sm:flex-row gap-2 mt-3" onSubmit={(e) => { e.preventDefault(); save(); }}>
++          <div className="relative sm:flex-1">
++            <input
++              type={show ? 'text' : 'password'}
++              value={draft}
++              onChange={(e) => { setDraft(e.target.value); setResult(null); }}
++              placeholder={step.placeholder}
++              aria-label={step.title}
++              autoComplete="off"
++              className="input-field pr-10 font-mono"
++            />
++            <button type="button" onClick={() => setShow(!show)} aria-label={show ? 'Hide key' : 'Show key'}
++              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink">
++              {show ? <EyeOff size={16} /> : <Eye size={16} />}
++            </button>
++          </div>
++          <button type="submit" disabled={!draft.trim() || busy || draft.trim() === value} className="btn-primary py-2 px-4 text-sm">
++            {busy ? <><Loader2 size={14} className="animate-spin" /> Testing…</> : draft.trim() && draft.trim() === value ? <><Check size={14} /> Saved</> : 'Save & test'}
++          </button>
++        </form>
++        <Result result={result} />
++      </div>
++    </li>
++  );
++}
++
++function BackupStep({ n, status, onConnected }) {
++  const connected = !!status?.storage?.bucket;
++  const [open, setOpen] = useState(false);
++  const [kind, setKind] = useState('r2');
++  const [form, setForm] = useState({ endpoint: '', accessKeyId: '', secretAccessKey: '', bucket: '' });
++  const [busy, setBusy] = useState(false);
++  const [result, setResult] = useState(null);
++  const preset = BUCKETS[kind];
++  const field = (name) => ({ value: form[name], onChange: (e) => { setForm({ ...form, [name]: e.target.value }); setResult(null); } });
++
++  const connect = async () => {
++    setBusy(true);
++    setResult(null);
++    try {
++      const res = await apiFetch('/api/setup/storage', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify(kind === 'aws' ? { ...form, endpoint: '' } : form),
++      });
++      const data = await res.json();
++      const r = res.ok ? data : { ok: false, detail: data.detail || 'Could not save.' };
++      setResult(r);
++      if (r.ok) onConnected();
++    } catch {
++      setResult({ ok: false, detail: 'Could not reach the OpenShorts server.' });
++    } finally {
++      setBusy(false);
++    }
++  };
++
++  return (
++    <li className="flex gap-3 sm:gap-4">
++      <span className={`w-7 h-7 shrink-0 rounded-full flex items-center justify-center text-xs font-medium ${connected ? 'bg-ok text-paper' : 'bg-paper3 text-ink2'}`}>
++        {connected ? <Check size={14} /> : n}
++      </span>
++      <div className="flex-1 min-w-0">
++        <div className="flex flex-wrap items-center gap-2">
++          <h3 className="text-sm font-medium text-ink">Back up your clips</h3>
++          <span className="readout">Optional</span>
++        </div>
++        <p className="text-xs text-muted mt-1">
++          {connected
++            ? <>Backing up every finished job to <strong className="text-ink2">{status.storage.bucket}</strong>.</>
++            : <>Clips stay on this computer for {status?.retentionHours ?? 24} hours, then they are deleted. Download them, or connect free cloud storage to keep a copy.</>}
++        </p>
++        <button type="button" onClick={() => setOpen(!open)} aria-expanded={open}
++          className="inline-flex items-center gap-1 text-xs text-brass underline mt-2">
++          {connected ? 'Change storage' : 'Connect cloud storage'}
++          <ChevronDown size={12} className={open ? 'rotate-180' : ''} />
++        </button>
++        {open && (
++          <form className="space-y-2 mt-3" onSubmit={(e) => { e.preventDefault(); connect(); }}>
++            <label className="block text-xs text-muted">
++              Storage provider
++              <select className="input-field mt-1" value={kind} onChange={(e) => { setKind(e.target.value); setResult(null); }}>
++                {Object.entries(BUCKETS).map(([k, b]) => <option key={k} value={k}>{b.label}</option>)}
++              </select>
++            </label>
++            {preset.link && (
++              <a href={preset.link} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-brass underline">
++                Create a bucket and an access key there <ExternalLink size={11} />
++              </a>
++            )}
++            {kind !== 'aws' && (
++              <label className="block text-xs text-muted">
++                Endpoint URL
++                <input className="input-field mt-1 font-mono" placeholder={preset.endpoint} autoComplete="off" {...field('endpoint')} />
++              </label>
++            )}
++            <label className="block text-xs text-muted">
++              Bucket name
++              <input className="input-field mt-1 font-mono" placeholder="my-clips" autoComplete="off" {...field('bucket')} />
++            </label>
++            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
++              <label className="block text-xs text-muted">
++                Access key ID
++                <input className="input-field mt-1 font-mono" autoComplete="off" {...field('accessKeyId')} />
++              </label>
++              <label className="block text-xs text-muted">
++                Secret access key
++                <input type="password" className="input-field mt-1 font-mono" autoComplete="off" {...field('secretAccessKey')} />
++              </label>
++            </div>
++            <button type="submit" className="btn-primary py-2 px-4 text-sm"
++              disabled={busy || !form.bucket.trim() || !form.accessKeyId.trim() || !form.secretAccessKey.trim() || (kind !== 'aws' && !form.endpoint.trim())}>
++              {busy ? <><Loader2 size={14} className="animate-spin" /> Testing…</> : <><HardDrive size={14} /> Test & connect</>}
++            </button>
++            <p className="text-xs text-muted">Saved on the OpenShorts server (in its .env file), not in your browser.</p>
++          </form>
++        )}
++        <Result result={result} />
++      </div>
++    </li>
++  );
++}
++
++export default function QuickSetup({ geminiKey, onGeminiKey, groqKey, onGroqKey }) {
++  const [status, setStatus] = useState(null);
++  const load = () => apiFetch('/api/setup/status').then((r) => (r.ok ? r.json() : null)).then(setStatus).catch(() => {});
++  useEffect(() => { load(); }, []);
++
++  const values = { gemini: geminiKey, groq: groqKey };
++  const setters = { gemini: onGeminiKey, groq: onGroqKey };
++  const onServer = { gemini: status?.geminiOnServer, groq: status?.groqOnServer };
++  const doneCount = KEYS.filter((k) => values[k.service] || onServer[k.service]).length + (status?.storage?.bucket ? 1 : 0);
++
++  return (
++    <section className="card p-4 sm:p-6 mb-8 animate-fade" aria-labelledby="quick-setup-title">
++      <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
++        <h2 id="quick-setup-title" className="font-display lowercase text-lg text-ink">Quick setup</h2>
++        <span className={doneCount >= 1 && (geminiKey || status?.geminiOnServer) ? 'badge-ok' : 'readout'}>
++          {doneCount} of 3 done
++        </span>
++      </div>
++      <p className="text-xs text-muted mb-6">
++        Three steps, all free. Only the first one is needed to start making clips.
++        Keys stay in this browser and go to your OpenShorts server only while a job runs.
++      </p>
++      <ol>
++        {KEYS.map((step, i) => (
++          <KeyStep key={step.service} step={step} n={i + 1} value={values[step.service]}
++            onSave={setters[step.service]} onServer={!!onServer[step.service]} />
++        ))}
++        <BackupStep n={3} status={status} onConnected={load} />
++      </ol>
++    </section>
++  );
++}
+diff --git a/tests/test_transcribe_backends.py b/tests/test_transcribe_backends.py
+index 3c67e19..5de533e 100644
+--- a/tests/test_transcribe_backends.py
++++ b/tests/test_transcribe_backends.py
+@@ -514,3 +514,10 @@ def test_groq_is_the_default_when_a_key_is_at_hand(monkeypatch):
+     monkeypatch.setattr(tb, "_has_audio_stream", lambda path: True)
+     monkeypatch.setattr(tb, "_transcribe_with_groq", lambda path: sentinel)
+     assert tb.transcribe_media("video.mp4") is sentinel
++
++
++def test_groq_retry_wait_honours_retry_after_and_caps():
++    import transcribe_backends as tb
++    assert tb.groq_retry_wait("42", 0) == 42
++    assert tb.groq_retry_wait(None, 2) == 60      # backoff 15 * 2^2
++    assert tb.groq_retry_wait("99999", 0) == 600  # capped at 10 min
+diff --git a/tests/test_layout_ranges.py b/tests/test_layout_ranges.py
+index b7565af..272ebf3 100644
+--- a/tests/test_layout_ranges.py
++++ b/tests/test_layout_ranges.py
+@@ -144,3 +144,13 @@ class TestPerfEnv:
+         }) == {"WHISPER_MODEL": "large-v3-turbo", "WHISPER_DEVICE": "cuda",
+                "CLIP_WORKERS": "8"}
+         assert app_module.perf_env("not json") == {}
++
++
++class TestSetupClientIsLocal:
++    def test_only_local_callers_may_save_server_settings(self):
++        app_module = pytest.importorskip("app")
++        local = app_module.setup_client_is_local
++        assert local("127.0.0.1", "")
++        assert local("172.18.0.3", "192.168.1.20")       # docker nginx → LAN browser
++        assert not local("8.8.8.8", "")                   # internet caller
++        assert not local("172.18.0.3", "1.1.1.1")         # public client behind proxy

@@ -1,0 +1,1343 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tiny Clipper</title>
+  <!-- Puter: free Gemini text-to-speech for the hook voice, run from this page (user-pays, no API key). -->
+  <script src="https://js.puter.com/v2/"></script>
+  <link rel="icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23ff5a36'/><path d='M11 9l12 7-12 7z' fill='white'/></svg>">
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --card: #ffffff;
+      --ink: #1b1b1f;
+      --muted: #6b6b75;
+      --line: #e4e2dc;
+      --accent: #ff5a36;
+      --accent-ink: #ffffff;
+      --accent-soft: #fff0eb;
+      --ok: #16803c;
+      --ok-soft: #e8f6ee;
+      --bad: #b42318;
+      --bad-soft: #fdecea;
+      --radius: 14px;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 4px 16px rgba(0, 0, 0, .05);
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111114;
+        --card: #1b1b20;
+        --ink: #f1f1f4;
+        --muted: #9a9aa6;
+        --line: #2c2c33;
+        --accent-soft: #3a1f17;
+        --ok: #4ade80;
+        --ok-soft: #13291c;
+        --bad: #f87171;
+        --bad-soft: #321718;
+        --shadow: none;
+      }
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+
+    a {
+      color: var(--accent);
+    }
+
+    button,
+    input,
+    select {
+      font: inherit;
+      color: inherit;
+    }
+
+    :focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 16px 64px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 20px;
+      letter-spacing: -.02em;
+    }
+
+    .logo svg {
+      width: 32px;
+      height: 32px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 26px;
+      line-height: 1.2;
+      margin: 0 0 6px;
+      letter-spacing: -.02em;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 0 0 4px;
+    }
+
+    .sub {
+      color: var(--muted);
+      margin: 0 0 20px;
+    }
+
+    .small {
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 0;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      white-space: nowrap;
+      background: var(--accent);
+      color: var(--accent-ink);
+      min-height: 44px;
+    }
+
+    .btn:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+    }
+
+    .btn.ghost {
+      background: transparent;
+      color: var(--ink);
+      border: 1px solid var(--line);
+    }
+
+    .btn.big {
+      width: 100%;
+      font-size: 18px;
+      min-height: 56px;
+    }
+
+    .btn.small-btn {
+      padding: 6px 12px;
+      min-height: 36px;
+      font-size: 14px;
+    }
+
+    input[type=text],
+    input[type=password],
+    input[type=url] {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--bg);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* setup */
+    .steps {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: grid;
+      gap: 16px;
+    }
+
+    .step {
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 14px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+    }
+
+    .num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      font-weight: 700;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    .step.done .num {
+      background: var(--ok-soft);
+      color: var(--ok);
+    }
+
+    .tag {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      padding: 2px 8px;
+      border-radius: 99px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      margin-left: 6px;
+      vertical-align: 2px;
+    }
+
+    .tag.opt {
+      background: var(--line);
+      color: var(--muted);
+    }
+
+    .how {
+      margin: 8px 0 12px;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .keyrow {
+      display: flex;
+      gap: 8px;
+    }
+
+    .keyrow .field {
+      position: relative;
+      flex: 1;
+    }
+
+    .eye {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      border: 0;
+      background: none;
+      cursor: pointer;
+      color: var(--muted);
+      padding: 8px;
+    }
+
+    .msg {
+      margin: 8px 0 0;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .msg.ok {
+      color: var(--ok);
+    }
+
+    .msg.bad {
+      color: var(--bad);
+    }
+
+    .saved {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      flex-wrap: wrap;
+      background: var(--ok-soft);
+      color: var(--ok);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-weight: 600;
+    }
+
+    .linkbtn {
+      background: none;
+      border: 0;
+      padding: 0;
+      color: var(--accent);
+      cursor: pointer;
+      text-decoration: underline;
+      font-size: 14px;
+    }
+
+    /* create */
+    .tabs {
+      display: inline-flex;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 16px;
+    }
+
+    .tabs button {
+      border: 0;
+      background: none;
+      padding: 8px 16px;
+      border-radius: 9px;
+      cursor: pointer;
+      font-weight: 600;
+      color: var(--muted);
+      min-height: 40px;
+    }
+
+    .tabs button[aria-selected=true] {
+      background: var(--card);
+      color: var(--ink);
+      box-shadow: var(--shadow);
+    }
+
+    .drop {
+      display: grid;
+      place-items: center;
+      text-align: center;
+      gap: 6px;
+      padding: 36px 16px;
+      border: 2px dashed var(--line);
+      border-radius: 12px;
+      cursor: pointer;
+      background: var(--bg);
+    }
+
+    .drop.over,
+    .drop:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+
+    .drop strong {
+      font-size: 18px;
+    }
+
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin: 24px 0;
+    }
+
+    .label {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    .choices {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .choice {
+      position: relative;
+    }
+
+    .choice input {
+      position: absolute;
+      opacity: 0;
+    }
+
+    .choice span {
+      display: block;
+      padding: 10px 16px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      cursor: pointer;
+      min-height: 44px;
+    }
+
+    .choice input:checked+span {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .choice input:focus-visible+span {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+    }
+
+    .choice small {
+      display: block;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 400;
+    }
+
+    .check {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      cursor: pointer;
+    }
+
+    .check input {
+      width: 20px;
+      height: 20px;
+      accent-color: var(--accent);
+    }
+
+    .warn-box {
+      background: var(--accent-soft);
+      color: var(--ink);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 12px;
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .error-box {
+      background: var(--bad-soft);
+      color: var(--bad);
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 12px;
+      font-weight: 600;
+    }
+
+    /* library */
+    .job {
+      margin-bottom: 28px;
+    }
+
+    .job-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .job-title {
+      font-weight: 700;
+      overflow-wrap: anywhere;
+    }
+
+    .progress {
+      margin-top: 12px;
+    }
+
+    .bar {
+      height: 8px;
+      background: var(--line);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .bar>div {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 99px;
+      transition: width .4s;
+    }
+
+    .bar.indeterminate>div {
+      width: 30% !important;
+      animation: slide 1.2s ease-in-out infinite;
+    }
+
+    @keyframes slide {
+      from {
+        transform: translateX(-100%);
+      }
+
+      to {
+        transform: translateX(340%);
+      }
+    }
+
+    .stages {
+      display: flex;
+      gap: 6px 18px;
+      flex-wrap: wrap;
+      list-style: none;
+      padding: 0;
+      margin: 12px 0 0;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .stages li.now {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    .stages li.past {
+      color: var(--ok);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 16px;
+    }
+
+    .clip {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .clip video {
+      width: 100%;
+      aspect-ratio: 9/16;
+      background: #000;
+      display: block;
+    }
+
+    .clip .body {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+    }
+
+    .clip .title {
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .clip .meta {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .clip .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+      margin-top: auto;
+    }
+
+    .post {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .post a {
+      margin-right: 8px;
+    }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      padding: 32px 0;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      transform: translateX(-50%);
+      background: var(--ink);
+      color: var(--bg);
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      z-index: 10;
+    }
+
+    .social-form {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    details summary {
+      cursor: pointer;
+      color: var(--accent);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .posts {
+      font-size: 13px;
+      display: grid;
+      gap: 2px;
+      overflow-wrap: anywhere;
+    }
+
+    .posts .done {
+      color: var(--ok);
+    }
+
+    .posts .error {
+      color: var(--bad);
+    }
+
+    .posts .posting {
+      color: var(--muted);
+    }
+
+    .editing {
+      font-size: 13px;
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    dialog {
+      max-height: calc(100vh - 32px);
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--card);
+      color: var(--ink);
+      padding: 24px;
+      width: min(480px, calc(100vw - 32px));
+    }
+
+    dialog::backdrop {
+      background: rgba(0, 0, 0, .5);
+    }
+
+    textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--bg);
+      font: inherit;
+      color: inherit;
+      margin-bottom: 16px;
+      resize: vertical;
+    }
+
+    @media (max-width: 640px) {
+      .card {
+        padding: 18px;
+      }
+
+      .options {
+        grid-template-columns: 1fr;
+      }
+
+      .keyrow {
+        flex-direction: column;
+      }
+
+      .grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      .clip .actions {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="8" fill="#ff5a36" />
+          <path d="M11 9l12 7-12 7z" fill="#fff" />
+        </svg>
+        Tiny Clipper
+      </div>
+      <button class="btn ghost" id="keysBtn" type="button">🔑 Keys</button>
+    </header>
+
+    <!-- Setup: shown first until a key is in, reopened with the Keys button -->
+    <section class="card hidden" id="setup" aria-labelledby="setupTitle">
+      <h1 id="setupTitle">Let's get you set up</h1>
+      <p class="sub">A free Gemini key is all you need to start, about 2 minutes. The rest is optional.</p>
+      <ol class="steps" id="keySteps"></ol>
+      <h2 style="margin:32px 0 4px">Post directly <span class="tag opt">Optional</span></h2>
+      <p class="small" style="margin:0 0 16px">Connect your accounts to post clips with one click. Each platform needs
+        a free developer app of your own: about 10 minutes, once.</p>
+      <ol class="steps" id="socialCards"></ol>
+      <p class="small" style="margin-top:16px">Keys and sign-ins are saved on this computer only (in
+        <code>settings.json</code>) and sent only to the service they belong to.</p>
+      <button class="btn big" id="setupDone" type="button" style="margin-top:8px">Start making clips →</button>
+    </section>
+
+    <!-- Create -->
+    <section class="card hidden" id="create" aria-labelledby="createTitle">
+      <h1 id="createTitle">Turn a long video into short clips</h1>
+      <p class="sub">Tiny Clipper finds the best moments, makes them vertical and adds captions.</p>
+
+      <div class="tabs" role="tablist" aria-label="Video source">
+        <button role="tab" aria-selected="true" id="tabFile" type="button">Upload a file</button>
+        <button role="tab" aria-selected="false" id="tabLink" type="button">Paste a link</button>
+      </div>
+
+      <form id="form">
+        <div id="filePane">
+          <label class="drop" id="drop">
+            <input type="file" id="file" accept="video/*,audio/*" class="hidden">
+            <span aria-hidden="true" style="font-size:32px">🎬</span>
+            <strong id="dropText">Drop your video here</strong>
+            <span class="small">or click to choose a file (MP4, MOV, MKV…)</span>
+          </label>
+        </div>
+        <div id="linkPane" class="hidden">
+          <label class="label" for="url">Video link</label>
+          <input type="url" id="url" placeholder="https://www.youtube.com/watch?v=…" autocomplete="off">
+          <p class="small">YouTube and most video sites. If a link fails, download the video and upload the file
+            instead.</p>
+        </div>
+
+        <div class="options">
+          <fieldset style="border:0;padding:0;margin:0">
+            <legend class="label">How many clips?</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="count" value="3"><span>3</span></label>
+              <label class="choice"><input type="radio" name="count" value="5" checked><span>5</span></label>
+              <label class="choice"><input type="radio" name="count" value="8"><span>8</span></label>
+            </div>
+          </fieldset>
+          <fieldset style="border:0;padding:0;margin:0">
+            <legend class="label">Video shape</legend>
+            <div class="choices">
+              <label class="choice"><input type="radio" name="layout" value="auto" checked><span>Auto<small>Follows the
+                    person or subject</small></span></label>
+              <label class="choice"><input type="radio" name="layout" value="fill"><span>Fill<small>Always fills the
+                    screen</small></span></label>
+              <label class="choice"><input type="radio" name="layout" value="fit"><span>Show everything<small>Never cuts
+                    anything off</small></span></label>
+            </div>
+          </fieldset>
+        </div>
+        <div style="display:grid;gap:12px;margin-bottom:20px">
+          <label class="check"><input type="checkbox" id="intro" checked>
+            <span>Start with a hook <span class="small">· the best moment, muted, with an AI voice (“Watch how this
+                man…”) and a whoosh into the clip</span></span></label>
+          <label class="check"><input type="checkbox" id="captions" checked> Add captions</label>
+        </div>
+
+        <button class="btn big" id="go" type="submit">✂️ Make my clips</button>
+        <div class="error-box hidden" id="formError" role="alert"></div>
+      </form>
+    </section>
+
+    <!-- Library -->
+    <section aria-labelledby="libTitle">
+      <h2 id="libTitle" style="font-size:22px;margin:32px 0 16px">Your clips</h2>
+      <p class="small" style="margin-top:-10px">Saved on this computer in the <code>library</code> folder. They stay
+        until you delete them.</p>
+      <div id="library" aria-live="polite"></div>
+    </section>
+  </div>
+  <dialog id="postDlg" aria-labelledby="postTitle">
+    <h2 id="postTitle" style="margin-bottom:16px">Post this clip</h2>
+    <label class="label" for="caption">Caption</label>
+    <textarea id="caption" rows="4" maxlength="2000"></textarea>
+    <fieldset style="border:0;padding:0;margin:0 0 12px">
+      <legend class="label">Post to</legend>
+      <div class="choices" id="postTargets"></div>
+    </fieldset>
+    <p class="small" id="postNote"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn ghost" type="button" id="postCancel">Cancel</button>
+      <button class="btn" type="button" id="postGo">📤 Post</button>
+    </div>
+  </dialog>
+  <div class="toast hidden" id="toast" role="status"></div>
+
+  <script>
+    const KEYS = [
+      {
+        id: 'gemini', name: 'Gemini', tag: 'Required',
+        what: 'Turns speech into captions, picks the moments, writes the titles and makes the hook voices. Free with a Google account; with Google Cloud credit it also uses the best models and makes thumbnails.',
+        link: 'https://aistudio.google.com/app/apikey', site: 'aistudio.google.com',
+        how: ['Sign in with Google', 'Click “Create API key”', 'Copy the key and paste it below'],
+        placeholder: 'AIza… or AQ.…', backup: 'Make it in another Google Cloud project (or Google account): each project has its own limits.'
+      },
+      {
+        id: 'groq', name: 'Groq', tag: 'Backup',
+        what: 'Free backup: takes over speech-to-text and picking moments if Gemini is busy or out of quota.',
+        link: 'https://console.groq.com/keys', site: 'console.groq.com',
+        how: ['Sign in (Google or email)', 'Click “Create API Key”, give it any name', 'Copy the key and paste it below'],
+        placeholder: 'gsk_…', backup: 'Make it with another free Groq account: each account has its own limits.'
+      },
+    ];
+    const STAGES = [['download', 'Download'], ['transcribe', 'Speech to text'], ['pick', 'Best moments'], ['voice', 'AI voice'], ['render', 'Cutting clips']];
+    // Hook voice: Gemini TTS through Puter, from the page (Puter has no server key to give us).
+    // Only the hook text is sent: any instruction text would be read out loud.
+    // OpenAI's voice takes the text exactly as given. Puter's Gemini voice wraps it in a
+    // prompt ("Say the following text aloud.") that gemini-3.8-flash-tts reads out loud.
+    const VOICE = { provider: 'openai', model: 'gpt-4o-mini-tts', voice: 'ash' };
+    const VOICE_CLEAN = VOICE.provider !== 'gemini';  // tells the app no clean-up is needed
+    const puterOn = () => { try { return !!window.puter && puter.auth.isSignedIn(); } catch { return false; } };
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    let keys = {}, jobs = [], pollTimer = null;
+    const shareFiles = {};  // clip url -> File waiting for a second tap
+    const canShareFiles = !!navigator.canShare && matchMedia('(pointer: coarse)').matches;
+
+    function toast(text) {
+      const t = $('toast'); t.textContent = text; t.classList.remove('hidden');
+      clearTimeout(t._h); t._h = setTimeout(() => t.classList.add('hidden'), 2500);
+    }
+
+    async function api(path, opts = {}) {
+      const res = await fetch(path, opts);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.detail || `Error ${res.status}`);
+      return data;
+    }
+
+    /* ---------- keys ---------- */
+    const hasGroq = () => (keys.gemini || []).length + (keys.groq || []).length > 0;  // any key to work with
+    function renderKeys() {
+      $('keySteps').innerHTML = KEYS.map((k, i) => {
+        const list = keys[k.id] || [], has = list.length > 0;
+        return `<li class="step ${has ? 'done' : ''}">
+      <span class="num" aria-hidden="true">${has ? '✓' : i + 1}</span>
+      <div>
+        <h2>${k.name} key <span class="tag ${k.tag === 'Required' ? '' : 'opt'}">${k.tag}</span></h2>
+        <p class="small" style="margin:2px 0 0">${k.what}</p>
+        ${has ? `${list.map((m, i) => `<div class="saved" style="margin-top:8px"><span>✓ ${i ? `Backup key ${i}` : 'Main key'} (${esc(m)})</span>
+            <button class="linkbtn" data-remove="${k.id}/${i}" type="button" aria-label="Remove ${i ? `backup key ${i}` : 'main key'}">Remove</button></div>`).join('')}
+          <button class="linkbtn" style="margin-top:10px" data-change="${k.id}" type="button">＋ Add a backup key</button>
+          <p class="small" style="margin:4px 0 0">Used when the main key hits its free limit. ${k.backup}</p>
+          <div class="hidden" id="edit-${k.id}">${keyForm(k)}</div>${k.id === 'gemini' ? cloudBox() : ''}`
+            : keyForm(k)}
+        ${keys.cloud_only && k.id !== 'gemini' ? '<p class="small" style="margin:8px 0 0">⏸ Paused: “Use only Google Cloud” is on.</p>' : ''}
+      </div></li>`;
+      }).join('') + voiceStep();
+      $('setupDone').disabled = !hasGroq();
+      $('setupDone').textContent = hasGroq() ? 'Start making clips →' : 'Add your Gemini key to continue';
+    }
+
+    // Google Cloud credit: the same Gemini key works through Vertex AI once the
+    // key's Cloud project has the API turned on; the server checks which keys do.
+    function cloudBox() {
+      const on = (keys.vertex || []).length > 0;
+      return `<div class="${on ? 'saved' : 'warn-box'}" style="margin-top:12px;display:block">
+        <b>☁️ Google Cloud credit: ${on ? 'on' : 'not on yet'}</b>
+        <p class="small" style="margin:4px 0 0;color:inherit">${on
+          ? 'Paid from your Google Cloud credit: Google speech-to-text, Gemini 3.1 Pro picks your clips, Gemini makes the hook voices and Nano Banana Pro designs a thumbnail for every clip.'
+          : 'To spend your Google Cloud credit: in the Google Cloud project of this key, turn on the <b>Agent Platform API</b> (Vertex AI) and make sure the project uses the billing account with your credit. Then click Check again.'}</p>
+        ${on ? `<label class="check" style="margin-top:10px;font-weight:600"><input type="checkbox" id="cloudOnly" ${keys.cloud_only ? 'checked' : ''}>
+          Use only Google Cloud <span class="small" style="color:inherit;font-weight:400">· your other keys stay saved, unused, for when the credit ends</span></label>` : ''}
+        <p class="small" style="margin:8px 0 0;color:inherit">🎙 Speech-to-text on Google Cloud: ${keys.signin
+          ? `✓ signed in (project ${esc(keys.signin)})`
+          : 'needs the Google sign-in on this computer: install the <a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener">Google Cloud CLI</a>, run <code>gcloud auth application-default login</code> and <code>gcloud auth application-default set-quota-project YOUR_PROJECT_ID</code>, then restart Tiny Clipper.'}</p>
+        <button class="linkbtn" type="button" id="cloudCheck" style="margin-top:6px">Check again</button>
+        <p class="small" id="cloudMsg" aria-live="polite" style="margin:4px 0 0;color:inherit"></p></div>`;
+    }
+
+    function voiceStep() {
+      const on = puterOn();
+      return `<li class="step ${on ? 'done' : ''}"><span class="num" aria-hidden="true">${on ? '✓' : 3}</span><div>
+    <h2>AI voice for hooks <span class="tag opt">Optional</span></h2>
+    <p class="small" style="margin:2px 0 0">Backup voice for the hooks. Gemini (step 1) makes them first; Puter (OpenAI's voice) only steps in if Gemini's voice isn't available. No key needed, just a free Puter account.</p>
+    ${on ? '<div class="saved" style="margin-top:12px"><span>✓ Connected to Puter</span><button class="linkbtn" type="button" id="voiceTest">▶ Test voice</button></div>'
+          : `<button class="btn" style="margin-top:12px" type="button" id="puterConnect">Connect Puter</button>
+         <p class="small">A Puter window opens: sign in or create a free account. Skip it and hooks still work, just without the voice.</p>`}
+    ${keys.cloud_only ? '<p class="small" style="margin:8px 0 0">⏸ Paused: “Use only Google Cloud” is on.</p>' : ''}
+    <p class="msg" id="puterMsg" aria-live="polite"></p>
+  </div></li>`;
+    }
+
+    /* ---------- social platforms ---------- */
+    const ext = (url, text) => `<a href="${url}" target="_blank" rel="noopener">${text} ↗</a>`;
+    const SOCIAL = [
+      {
+        id: 'instagram', name: 'Instagram Reels', icon: 'IG',
+        note: 'Posts publicly to your Instagram Business or Creator account.',
+        how: [
+          'In the Instagram app: <b>Settings → Account type and tools</b> → switch to a <b>Professional</b> account (Creator or Business).',
+          `${ext('https://developers.facebook.com/apps/creation/', 'Create a Meta app')} → use case <b>“Manage messaging &amp; content on Instagram”</b>.`,
+          'In the app: <b>Instagram → API setup with Instagram business login</b> → <b>Add account</b> (approve it in Instagram) → <b>Generate token</b>.',
+          'Copy the token and paste it below.',
+        ],
+        form: () => `<form class="keyrow" style="margin-top:12px" data-social="instagram">
+          <div class="field"><input type="password" name="token" placeholder="Access token" aria-label="Instagram access token" autocomplete="off" spellcheck="false"></div>
+          <button class="btn" type="submit">Save &amp; test</button></form>`,
+      },
+      {
+        id: 'youtube', name: 'YouTube Shorts', icon: 'YT',
+        note: `Uploads stay private until Google audits your project (free): ${ext('https://support.google.com/youtube/contact/yt_api_form', 'request the audit')}.`,
+        how: [
+          `${ext('https://console.cloud.google.com/projectcreate', 'Create a Google Cloud project')} (any name).`,
+          `Turn on the ${ext('https://console.cloud.google.com/apis/library/youtube.googleapis.com', 'YouTube Data API v3')}.`,
+          `Open ${ext('https://console.cloud.google.com/auth/overview', 'Google Auth Platform')} → <b>Get started</b> (choose External) → under <b>Audience</b>, add your Google account as a <b>test user</b>.`,
+          '<b>Clients → Create client → Desktop app</b>. Copy the Client ID and Client secret below, then click <b>Connect YouTube</b>.',
+        ],
+        form: (st) => `<form class="social-form" data-social="youtube">
+          <input type="text" name="client_id" placeholder="${st.configured ? 'Client ID (saved)' : 'Client ID (….apps.googleusercontent.com)'}" aria-label="YouTube client ID" autocomplete="off" spellcheck="false">
+          <input type="password" name="client_secret" placeholder="${st.configured ? 'Client secret (saved)' : 'Client secret'}" aria-label="YouTube client secret" autocomplete="off">
+          <button class="btn" type="submit">Connect YouTube</button></form>`,
+      },
+      {
+        id: 'tiktok', name: 'TikTok', icon: 'TT',
+        note: 'Clips arrive in your TikTok inbox as drafts. Open TikTok to finish and post them.',
+        how: [
+          `${ext('https://developers.tiktok.com/apps/', 'Open TikTok for Developers')} → <b>Manage apps → Connect an app</b>.`,
+          'Add the products <b>Login Kit</b> and <b>Content Posting API</b>, with the scope <b>video.upload</b>.',
+          'In Login Kit, add a <b>Redirect URI</b> that starts with https://, for example <code>https://example.com/tiny-clipper</code>. The page doesn’t have to work: you’ll copy its address back here.',
+          'Under <b>Sandbox</b>, add your TikTok account as a target user. Copy the Client key and Client secret below.',
+        ],
+        form: (st) => `<form class="social-form" data-social="tiktok">
+          <input type="text" name="client_key" placeholder="${st.configured ? 'Client key (saved)' : 'Client key'}" aria-label="TikTok client key" autocomplete="off" spellcheck="false">
+          <input type="password" name="client_secret" placeholder="${st.configured ? 'Client secret (saved)' : 'Client secret'}" aria-label="TikTok client secret" autocomplete="off">
+          <input type="url" name="redirect_uri" value="${esc(st.redirect_uri || '')}" placeholder="Redirect URI (https://…)" aria-label="TikTok redirect URI" autocomplete="off">
+          <button class="btn" type="submit">Connect TikTok</button></form>
+          <form class="social-form hidden" id="ttFinish" data-social="tiktok-finish">
+            <label class="small" for="ttUrl">After signing in, TikTok opens your redirect page. Copy that page’s full address and paste it here:</label>
+            <input type="url" id="ttUrl" name="url" placeholder="https://…?code=…" autocomplete="off">
+            <button class="btn" type="submit">Finish</button></form>`,
+      },
+    ];
+    let social = {};
+    const connected = () => SOCIAL.filter((p) => social[p.id]?.connected);
+
+    function renderSocial() {
+      $('socialCards').innerHTML = SOCIAL.map((p) => {
+        const st = social[p.id] || {};
+        return `<li class="step ${st.connected ? 'done' : ''}"><span class="num" aria-hidden="true" style="font-size:12px">${st.connected ? '✓' : p.icon}</span><div>
+          <h2>${p.name}</h2>
+          <p class="small" style="margin:2px 0 0">${p.note}</p>
+          ${st.connected
+            ? `<div class="saved" style="margin-top:12px"><span>✓ Connected${st.account ? ` as ${esc(st.account)}` : ''}</span>
+                <button class="linkbtn" data-disconnect="${p.id}" type="button">Disconnect</button></div>`
+            : `<details style="margin-top:10px"><summary>How to set it up</summary><ol class="how">${p.how.map((h) => `<li>${h}</li>`).join('')}</ol></details>${p.form(st)}`}
+          <p class="msg" id="msg-${p.id}" aria-live="polite"></p></div></li>`;
+      }).join('');
+    }
+
+    async function loadSocial() {
+      try { social = await api('/api/social'); } catch { social = {}; }
+      renderSocial();
+      loadJobs.last = ''; renderLibrary();  // Post buttons depend on what's connected
+    }
+
+    const postJson = (body) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+    $('socialCards').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = e.target, id = f.dataset.social, v = Object.fromEntries(new FormData(f));
+      const msg = $('msg-' + id.split('-')[0]), btn = f.querySelector('[type=submit]'), label = btn.textContent;
+      btn.disabled = true; btn.textContent = 'Working…'; msg.className = 'msg'; msg.textContent = '';
+      try {
+        if (id === 'instagram') {
+          const r = await api('/api/social/instagram', postJson({ token: v.token || '' }));
+          if (!r.ok) throw new Error(r.message);
+          toast(r.message); await loadSocial(); return;
+        }
+        if (id === 'youtube') {
+          const r = await api('/api/social/youtube', postJson({ client_id: v.client_id || '', client_secret: v.client_secret || '' }));
+          location.href = r.auth_url; return;  // Google sends you back here when done
+        }
+        if (id === 'tiktok') {
+          const r = await api('/api/social/tiktok', postJson({ client_id: v.client_key || '', client_secret: v.client_secret || '', redirect_uri: v.redirect_uri || '' }));
+          window.open(r.auth_url, '_blank', 'noopener');
+          $('ttFinish').classList.remove('hidden'); $('ttUrl').focus();
+          msg.className = 'msg ok'; msg.textContent = 'TikTok opened in a new tab. Sign in, then paste the address below.';
+          return;
+        }
+        const r = await api('/api/social/tiktok/finish', postJson({ url: v.url || '' }));
+        if (!r.ok) throw new Error(r.message);
+        toast(r.message); await loadSocial();
+      } catch (err) { msg.className = 'msg bad'; msg.textContent = '✗ ' + err.message; }
+      finally { btn.disabled = false; btn.textContent = label; }
+    });
+
+    $('socialCards').addEventListener('click', async (e) => {
+      const id = e.target.dataset.disconnect;
+      if (id && confirm('Disconnect this account from Tiny Clipper?')) {
+        await api(`/api/social/${id}`, { method: 'DELETE' }); await loadSocial();
+      }
+    });
+
+    function keyForm(k) {
+      return `<a class="btn small-btn ghost" style="margin-top:12px" href="${k.link}" target="_blank" rel="noopener">Get a free key at ${k.site} ↗</a>
+    <ol class="how">${k.how.map((h) => `<li>${h}</li>`).join('')}</ol>
+    <form class="keyrow" data-key="${k.id}">
+      <div class="field">
+        <input type="password" placeholder="${k.placeholder}" aria-label="${k.name} key" autocomplete="off" spellcheck="false">
+        <button class="eye" type="button" aria-label="Show key">👁</button>
+      </div>
+      <button class="btn" type="submit">Save &amp; test</button>
+    </form>
+    <p class="msg" aria-live="polite"></p>`;
+    }
+
+    $('keySteps').addEventListener('change', async (e) => {
+      if (e.target.id !== 'cloudOnly') return;
+      try {
+        const r = await api('/api/keys/cloud-only', postJson({ on: e.target.checked }));
+        keys.cloud_only = r.cloud_only; renderKeys();
+        toast(r.cloud_only ? 'Using only Google Cloud' : 'Using all your keys again');
+      } catch (err) { e.target.checked = !e.target.checked; toast(err.message); }
+    });
+
+    $('keySteps').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target, id = form.dataset.key, input = form.querySelector('input');
+      const btn = form.querySelector('[type=submit]'), msg = form.parentElement.querySelector('.msg');
+      if (!input.value.trim()) { msg.className = 'msg bad'; msg.textContent = 'Paste your key first.'; return; }
+      btn.disabled = true; btn.textContent = 'Testing…'; msg.textContent = '';
+      try {
+        const r = await api(`/api/keys/${id}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: input.value }) });
+        if (r.ok) { keys[id] = r.keys; renderKeys(); toast(`${id === 'groq' ? 'Groq' : 'Gemini'} key saved`); }
+        else { msg.className = 'msg bad'; msg.innerHTML = '✗ ' + linkify(esc(r.message)); }
+      } catch (err) { msg.className = 'msg bad'; msg.textContent = '✗ ' + err.message; }
+      finally { btn.disabled = false; btn.textContent = 'Save & test'; }
+    });
+
+    $('keySteps').addEventListener('click', async (e) => {
+      const t = e.target;
+      if (t.id === 'cloudCheck') {
+        t.textContent = 'Checking…';
+        try {
+          const { results } = await api('/api/keys/vertex/check', { method: 'POST' });
+          keys = await api('/api/keys'); renderKeys();
+          const bad = results.filter((r) => !r.ok);
+          $('cloudMsg').innerHTML = results.some((r) => r.ok) ? '✓ Google Cloud works.'
+            : bad.map((r) => `${esc(r.key)}: ${linkify(esc(r.message))}`).join('<br>');
+        } catch (err) { $('cloudMsg').textContent = '✗ ' + err.message; }
+        if ($('cloudCheck')) $('cloudCheck').textContent = 'Check again';
+      } else if (t.id === 'voiceTest') {
+        t.textContent = 'Recording…';
+        try { (await puter.ai.txt2speech('Watch how this simple trick changes everything.', VOICE)).play(); }
+        catch (err) { $('puterMsg').className = 'msg bad'; $('puterMsg').textContent = '✗ ' + String(err?.message || err?.error?.message || err); }
+        t.textContent = '▶ Test voice';
+      } else if (t.id === 'puterConnect') {
+        try { await puter.auth.signIn(); renderKeys(); toast('AI voice connected'); }
+        catch (err) { $('puterMsg').className = 'msg bad'; $('puterMsg').textContent = window.puter ? '✗ Puter sign-in was closed or failed. Try again.' : '✗ Puter could not load. Check your internet connection.'; }
+      } else if (t.classList.contains('eye')) {
+        const input = t.previousElementSibling, show = input.type === 'password';
+        input.type = show ? 'text' : 'password'; t.setAttribute('aria-label', show ? 'Hide key' : 'Show key');
+      } else if (t.dataset.change) {
+        $('edit-' + t.dataset.change).classList.toggle('hidden');
+      } else if (t.dataset.remove && confirm('Remove this key from Tiny Clipper?')) {
+        const [service] = t.dataset.remove.split('/');
+        keys[service] = (await api(`/api/keys/${t.dataset.remove}`, { method: 'DELETE' })).keys;
+        renderKeys(); showView();
+      }
+    });
+
+    function showView(forceSetup = false) {
+      const setup = forceSetup || !hasGroq();
+      $('setup').classList.toggle('hidden', !setup);
+      $('create').classList.toggle('hidden', setup);
+      $('keysBtn').textContent = setup && hasGroq() ? '← Back' : '🔑 Keys';
+      $('keysBtn').classList.toggle('hidden', !hasGroq());  // nothing to go back to during first setup
+    }
+    let setupOpen = false;
+    $('keysBtn').onclick = () => { if (!hasGroq()) return; setupOpen = !setupOpen; showView(setupOpen); };
+    $('setupDone').onclick = () => { setupOpen = false; showView(); };
+
+    /* ---------- create ---------- */
+    let mode = 'file';
+    function setMode(m) {
+      mode = m;
+      $('tabFile').setAttribute('aria-selected', m === 'file'); $('tabLink').setAttribute('aria-selected', m === 'link');
+      $('filePane').classList.toggle('hidden', m !== 'file'); $('linkPane').classList.toggle('hidden', m !== 'link');
+    }
+    $('tabFile').onclick = () => setMode('file');
+    $('tabLink').onclick = () => setMode('link');
+
+    const drop = $('drop');
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+    ['dragleave', 'drop'].forEach((ev) => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+    drop.addEventListener('drop', (e) => { if (e.dataTransfer.files[0]) { $('file').files = e.dataTransfer.files; fileChosen(); } });
+    $('file').addEventListener('change', fileChosen);
+    function fileChosen() {
+      const f = $('file').files[0];
+      $('dropText').textContent = f ? `✓ ${f.name} (${(f.size / 1048576).toFixed(0)} MB)` : 'Drop your video here';
+    }
+
+    $('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = $('formError'); err.classList.add('hidden');
+      const fd = new FormData();
+      if (mode === 'file') {
+        if (!$('file').files[0]) { err.textContent = 'Choose a video file first.'; err.classList.remove('hidden'); return; }
+        fd.append('file', $('file').files[0]);
+      } else {
+        if (!$('url').value.trim()) { err.textContent = 'Paste a video link first.'; err.classList.remove('hidden'); return; }
+        fd.append('url', $('url').value.trim());
+      }
+      fd.append('count', document.querySelector('[name=count]:checked').value);
+      fd.append('layout', document.querySelector('[name=layout]:checked').value);
+      fd.append('captions', $('captions').checked);
+      fd.append('intro', $('intro').checked);
+      const go = $('go'); go.disabled = true; go.textContent = mode === 'file' ? 'Uploading…' : 'Starting…';
+      try {
+        await api('/api/jobs', { method: 'POST', body: fd });
+        $('file').value = ''; $('url').value = ''; fileChosen();
+        toast('Started! Your clips will appear below.');
+        await loadJobs();
+        $('libTitle').scrollIntoView({ behavior: 'smooth' });
+      } catch (e2) { err.textContent = e2.message; err.classList.remove('hidden'); }
+      finally { go.disabled = false; go.textContent = '✂️ Make my clips'; }
+    });
+
+    /* ---------- library ---------- */
+    const linkify = (html) => html.replace(/https:\/\/[^\s<]+/g, (u) => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+    const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
+
+    function progressHtml(j) {
+      const idx = STAGES.findIndex(([id]) => id === j.step);
+      const pct = j.progress == null ? null : Math.round(j.progress * 100);
+      return `<div class="progress">
+    <div class="small" style="color:var(--ink);font-weight:600">${esc(j.message || 'Working…')}</div>
+    <div class="bar ${pct == null ? 'indeterminate' : ''}" role="progressbar" aria-label="Progress" ${pct == null ? '' : `aria-valuenow="${pct}"`}><div style="width:${pct ?? 30}%"></div></div>
+    <ol class="stages">${STAGES.map(([id, label], i) => `<li class="${i < idx ? 'past' : i === idx ? 'now' : ''}">${i < idx ? '✓ ' : ''}${label}</li>`).join('')}</ol>
+  </div>`;
+    }
+
+    function thumbHtml(j, c, n) {
+      if (!j.editable && !c.thumb) return '';
+      const src = c.thumb ? `/library/${encodeURIComponent(j.id)}/${encodeURIComponent(c.thumb)}?v=${c.thumb_v || 0}` : '';
+      return `<div class="small" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        ${src ? `<a href="${src}" target="_blank" rel="noopener" title="Open the thumbnail"><img src="${src}" alt="Thumbnail for ${esc(c.title)}" style="width:44px;aspect-ratio:9/16;object-fit:cover;border-radius:6px;display:block"></a>` : ''}
+        ${c.thumb_status ? '<span>🖼 Designing the thumbnail…</span>'
+          : `${src ? `<a href="${src}" download="${esc(c.title.replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'thumbnail')}.jpg">⬇ Thumbnail</a>` : ''}
+             ${j.editable ? `<button class="linkbtn" type="button" data-thumb="${esc(j.id)}:${n}">${src ? '↻ Redo' : '🖼 Make thumbnail'}</button>` : ''}`}
+      </div>${c.thumb_error ? `<div class="posts"><div class="error">✗ ${esc(c.thumb_error)}</div></div>` : ''}`;
+    }
+
+    const POST_ICON = { posting: '⏳', done: '✓', error: '✗' };
+    function postsHtml(c) {
+      const posts = Object.entries(c.posts || {});
+      if (!posts.length) return '';
+      return `<div class="posts">${posts.map(([p, r]) => {
+        const text = r.status === 'posting' ? 'posting…'
+          : (r.message || 'posted').replace(/^(Instagram|YouTube|TikTok)[^:]*:\s*/, '');  // name is already shown
+        const link = r.url && r.url.startsWith('https://') ? ` · <a href="${esc(r.url)}" target="_blank" rel="noopener">view</a>` : '';
+        return `<div class="${r.status}">${POST_ICON[r.status] || ''} ${SOCIAL.find((x) => x.id === p)?.name || p}: ${esc(text)}${link}</div>`;
+      }).join('')}</div>`;
+    }
+
+    function clipHtml(j, c, n) {
+      const url = `/library/${encodeURIComponent(j.id)}/${encodeURIComponent(c.file)}?v=${c.v || 0}`;  // ?v= shows the new version after an edit
+      const extra = [
+        j.editable && !c.editing ? `<a class="btn small-btn ghost" href="/editor?job=${encodeURIComponent(j.id)}&clip=${n}">✏️ Edit</a>` : '',
+        connected().length ? `<button class="btn small-btn" type="button" data-post="${esc(j.id)}:${n}">📤 Post</button>` : '',
+      ].filter(Boolean);
+      const wide = extra.length === 1 ? ' style="grid-column:1/-1"' : '';
+      return `<article class="clip">
+    <video src="${url}" controls playsinline preload="metadata"></video>
+    <div class="body">
+      <div class="title">${esc(c.title)}</div>
+      <div class="meta">${fmt(c.length)} · score ${c.score}/100${(c.parts?.length || 0) > 1 ? ` · ${c.parts.length} parts joined` : ''}${c.framing ? ` · ${esc(c.framing)}` : ''}</div>
+      ${c.message ? `<div class="small">💡 ${esc(c.message)}</div>` : ''}
+      ${c.intro && c.voiceover ? `<div class="small">🎙 “${esc(c.voiceover)}”</div>` : c.hook ? `<div class="small">${esc(c.hook)}</div>` : ''}
+      <div class="actions">
+        <a class="btn small-btn" href="${url}" download="${esc(c.title.replace(/[\\/:*?"<>|]+/g, '').slice(0, 60) || 'clip')}.mp4">⬇ Download</a>
+        ${canShareFiles ? `<button class="btn small-btn ghost" type="button" data-share="${url}">Share</button>`
+          : `<button class="btn small-btn ghost" type="button" data-copy="${esc(c.title)}">Copy title</button>`}
+        ${extra.map((b) => b.replace('class="btn small-btn', `${wide} class="btn small-btn`)).join('')}
+      </div>
+      ${c.editing ? `<div class="editing" role="status">✏️ ${esc(c.edit_status || 'Updating…')}</div>` : ''}
+      ${c.edit_error ? `<div class="posts"><div class="error">✗ ${esc(c.edit_error)}</div></div>` : ''}
+      ${c.edit_warning ? `<div class="small">ℹ️ ${linkify(esc(c.edit_warning))}</div>` : ''}
+      ${thumbHtml(j, c, n)}
+      ${postsHtml(c)}
+      <div class="post">Post on:
+        <a href="https://www.tiktok.com/upload" target="_blank" rel="noopener">TikTok</a>
+        <a href="https://studio.youtube.com" target="_blank" rel="noopener">YouTube</a>
+        <a href="https://www.instagram.com" target="_blank" rel="noopener">Instagram</a>
+      </div>
+    </div></article>`;
+    }
+
+    function renderLibrary() {
+      if (!jobs.length) { $('library').innerHTML = '<div class="empty card">No clips yet. Add a video above to make your first ones.</div>'; return; }
+      $('library').innerHTML = jobs.map((j) => {
+        const busy = j.status === 'queued' || j.status === 'running';
+        const when = new Date(j.created * 1000).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+        return `<div class="job card">
+      <div class="job-head">
+        <div><div class="job-title">${esc(j.name)}</div>
+          <div class="small">${when}${j.status === 'done' ? ` · ${j.clips.length} clips${j.ai ? ` · picked by ${esc(j.ai)}` : ''}` : ''}</div></div>
+        ${busy ? '' : `<div>${j.status === 'error' || j.missing ? `<button class="btn small-btn ghost" type="button" data-retry="${j.id}" aria-label="Retry ${esc(j.name)}">Retry</button> ` : ''}<button class="btn small-btn ghost" type="button" data-delete="${j.id}" aria-label="Delete ${esc(j.name)}">Delete</button></div>`}
+      </div>
+      ${busy ? progressHtml(j) : ''}
+      ${j.status === 'error' ? `<div class="error-box">${esc(j.error)} <a href="/api/logs" target="_blank" rel="noopener">See the log</a></div>` : ''}
+      ${j.warning ? `<div class="warn-box">ℹ️ ${linkify(esc(j.warning))}</div>` : ''}
+      ${j.clips.length ? `<div class="grid" style="margin-top:12px">${j.clips.map((c, i) => clipHtml(j, c, i + 1)).join('')}</div>` : ''}
+    </div>`;
+      }).join('');
+    }
+
+    // The server waits while this page records each hook voice and sends it back.
+    const voicing = new Set();
+    // Debug: show exactly what goes to Puter. puter.js calls its servers itself, so
+    // its outgoing driver requests are logged too (fetch and XHR), to see what it adds.
+    (() => {
+      const isDriverCall = (url) => /puter\.com\/drivers\/call/.test(String(url));
+      const origFetch = window.fetch;
+      window.fetch = function (input, init) {
+        const url = typeof input === 'string' ? input : input?.url;
+        if (isDriverCall(url)) console.log('[Tiny Clipper → Puter] request', url, init?.body);
+        return origFetch.apply(this, arguments);
+      };
+      const open = XMLHttpRequest.prototype.open, send = XMLHttpRequest.prototype.send;
+      XMLHttpRequest.prototype.open = function (method, url) { this._tcUrl = url; return open.apply(this, arguments); };
+      XMLHttpRequest.prototype.send = function (body) {
+        if (isDriverCall(this._tcUrl)) console.log('[Tiny Clipper → Puter] request (XHR)', this._tcUrl, body);
+        return send.apply(this, arguments);
+      };
+    })();
+
+    async function recordVoices() {
+      for (const j of jobs) {
+        for (const r of j.voice_requests || []) {
+          const id = `${j.id}:${r.i}:${r.text}`;
+          if (voicing.has(id)) continue;
+          voicing.add(id);
+          const fd = new FormData();
+          try {
+            if (!window.puter) throw new Error('Puter could not load. Check your internet connection');
+            console.log(`[Tiny Clipper → Puter] clip ${r.i} hook text:`, JSON.stringify(r.text), 'options:', JSON.stringify(VOICE));
+            const audio = await puter.ai.txt2speech(r.text, VOICE);
+            const blob = await (await fetch(audio.src)).blob();
+            console.log(`[Tiny Clipper ← Puter] clip ${r.i} audio:`, blob.type, `${blob.size} bytes`);
+            fd.append('file', blob, 'voice');
+            if (VOICE_CLEAN) fd.append('clean', '1');
+          } catch (err) {
+            console.error(`[Tiny Clipper ← Puter] clip ${r.i} failed:`, err);
+            fd.append('error', String(err?.message || err?.error?.message || err?.error || err));
+          }
+          await fetch(`/api/jobs/${encodeURIComponent(j.id)}/voice/${r.i}`, { method: 'POST', body: fd }).catch(() => { });
+        }
+      }
+    }
+
+    async function loadJobs() {
+      try { jobs = await api('/api/jobs'); } catch { return; }
+      recordVoices();
+      // Only redraw when something changed, so playing videos aren't interrupted.
+      const sig = JSON.stringify(jobs);
+      if (sig !== loadJobs.last) { loadJobs.last = sig; renderLibrary(); }
+      clearTimeout(pollTimer);
+      const posting = (j) => j.clips.some((c) => c.editing || c.thumb_status || Object.values(c.posts || {}).some((r) => r.status === 'posting'));
+      if (jobs.some((j) => j.status === 'queued' || j.status === 'running' || posting(j))) pollTimer = setTimeout(loadJobs, 2000);
+    }
+
+    $('library').addEventListener('click', async (e) => {
+      const t = e.target.closest('button'); if (!t) return;
+      if (t.dataset.retry) {
+        try { await api(`/api/jobs/${encodeURIComponent(t.dataset.retry)}/retry`, { method: 'POST' }); toast('Picking up where it stopped…'); loadJobs(); }
+        catch (err) { toast(err.message); }
+      } else if (t.dataset.delete) {
+        if (!confirm('Delete these clips from your computer? This can’t be undone.')) return;
+        try { await api(`/api/jobs/${encodeURIComponent(t.dataset.delete)}`, { method: 'DELETE' }); toast('Deleted'); loadJobs(); }
+        catch (err) { toast(err.message); }
+      } else if (t.dataset.thumb) {
+        const idx = t.dataset.thumb.lastIndexOf(':');
+        const jobId = t.dataset.thumb.slice(0, idx), n = t.dataset.thumb.slice(idx + 1);
+        try { await api(`/api/jobs/${encodeURIComponent(jobId)}/clips/${n}/thumbnail`, { method: 'POST' }); toast('Designing the thumbnail…'); loadJobs(); }
+        catch (err) { toast(err.message); }
+      } else if (t.dataset.post) {
+        const idx = t.dataset.post.lastIndexOf(':');
+        openPost(t.dataset.post.slice(0, idx), t.dataset.post.slice(idx + 1));
+      } else if (t.dataset.copy) {
+        await navigator.clipboard.writeText(t.dataset.copy); toast('Title copied');
+      } else if (t.dataset.share) {
+        const url = t.dataset.share;
+        let file = shareFiles[url];
+        if (!file) {
+          t.textContent = 'Preparing…';
+          const blob = await (await fetch(url)).blob();
+          file = new File([blob], url.split('/').pop().split('?')[0], { type: 'video/mp4' });
+        }
+        try { await navigator.share({ files: [file] }); delete shareFiles[url]; t.textContent = 'Share'; }
+        catch (err) {
+          // The download can outlast the tap's permission; one more tap opens the sheet instantly.
+          if (err.name === 'NotAllowedError') { shareFiles[url] = file; t.textContent = 'Tap to share'; }
+          else t.textContent = 'Share';
+        }
+      }
+    });
+
+    let posting = null;
+    function openPost(jobId, n) {
+      const c = jobs.find((j) => j.id === jobId).clips[n - 1];
+      posting = { jobId, n };
+      $('caption').value = c.title;
+      $('postTargets').innerHTML = connected().map((p) => `<label class="choice"><input type="checkbox" name="target" value="${p.id}" checked><span>${p.name}</span></label>`).join('');
+      $('postNote').textContent = 'Instagram posts publicly. YouTube uploads stay private until Google’s audit. TikTok gets a draft to finish in the app.';
+      $('postDlg').showModal();
+    }
+    $('postCancel').onclick = () => $('postDlg').close();
+    $('postGo').onclick = async () => {
+      const platforms = [...document.querySelectorAll('[name=target]:checked')].map((x) => x.value);
+      if (!platforms.length) { toast('Pick at least one platform'); return; }
+      try {
+        await api(`/api/jobs/${encodeURIComponent(posting.jobId)}/clips/${posting.n}/post`, postJson({ platforms, caption: $('caption').value }));
+        $('postDlg').close(); toast('Posting… the result shows under the clip.'); loadJobs();
+      } catch (err) { toast(err.message); }
+    };
+
+    (async () => {
+      try { keys = await api('/api/keys'); } catch { keys = {}; }
+      renderKeys(); showView(); loadJobs(); await loadSocial();
+      // Back from Google's YouTube sign-in, or from the editor.
+      const q = new URLSearchParams(location.search);
+      if (q.has('rendering')) { history.replaceState(null, '', '/'); toast('Rendering your edit… it shows here when ready.'); }
+      if (q.has('connected') || q.has('social_error')) {
+        history.replaceState(null, '', '/');
+        if (hasGroq()) { setupOpen = true; showView(true); }
+        if (q.has('connected')) toast('YouTube connected');
+        else { $('msg-youtube').className = 'msg bad'; $('msg-youtube').textContent = '✗ ' + q.get('social_error'); }
+        $('socialCards').scrollIntoView();
+      }
+    })();
+  </script>
+</body>
+
+</html>

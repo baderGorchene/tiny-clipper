@@ -1,0 +1,185 @@
+2026-10-13 20:24:09,466 INFO job d843f1977b5b: download
+2026-10-13 20:24:46,051 INFO job d843f1977b5b: transcribe
+2026-10-13 20:25:00,413 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.8s
+2026-10-13 20:25:01,153 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.6s
+2026-10-13 20:25:01,605 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.0s
+2026-10-13 20:25:01,715 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.1s
+2026-10-13 20:25:02,289 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.7s
+2026-10-13 20:25:02,837 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.2s
+2026-10-13 20:25:05,570 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 4.4s
+2026-10-13 20:25:08,826 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.5s
+2026-10-13 20:25:08,982 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.3s
+2026-10-13 20:25:09,278 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.7s
+2026-10-13 20:25:09,477 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.1s
+2026-10-13 20:25:09,496 INFO job d843f1977b5b: pick
+2026-10-13 20:26:09,108 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\proactor_events.py", line 166, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-13 20:26:09,227 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\proactor_events.py", line 166, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-13 20:26:18,281 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\proactor_events.py", line 166, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-13 20:29:40,087 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\proactor_events.py", line 166, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-13 20:29:53,437 INFO job d843f1977b5b: pick
+2026-10-13 20:29:59,824 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> 200 in 6.4s
+2026-10-13 20:34:59,967 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> ReadTimeout after 300.1s (try 1 of 2): The read operation timed out
+2026-10-13 20:40:10,092 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> ReadTimeout after 300.1s (try 2 of 2): The read operation timed out
+2026-10-13 20:40:10,095 INFO job d843f1977b5b: voice
+2026-10-13 20:40:12,413 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.3s
+2026-10-13 20:40:14,841 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.4s
+2026-10-13 20:40:17,136 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.3s
+2026-10-13 20:40:17,138 INFO job d843f1977b5b: render
+2026-10-13 20:40:38,853 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> 200 in 4.3s
+2026-10-13 20:41:17,770 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 20.9s
+2026-10-13 20:43:09,067 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\proactor_events.py", line 166, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-13 20:43:09,143 ERROR Exception in callback _ProactorBasePipeTransport._call_connection_lost()
+handle: <Handle _ProactorBasePipeTransport._call_connection_lost()>
+Traceback (most recent call last):
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\events.py", line 94, in _run
+    self._context.run(self._callback, *self._args)
+    ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\asyncio\proactor_events.py", line 166, in _call_connection_lost
+    self._sock.shutdown(socket.SHUT_RDWR)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^
+ConnectionResetError: [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-13 20:46:37,080 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> ReadTimeout after 300.3s (try 1 of 2): The read operation timed out
+2026-10-13 20:51:47,492 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> ReadTimeout after 300.4s (try 2 of 2): The read operation timed out
+2026-10-13 20:51:47,492 WARNING Google Cloud gemini-3.8-flash didn't answer (aiplatform.googleapis.com was reached but didn't answer within 300 s (the AI was too slow, not your internet).); trying gemini-3.5-flash
+2026-10-13 20:51:58,297 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:generateContent -> 200 in 10.8s
+2026-10-13 20:52:38,010 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 20.4s
+2026-10-13 20:57:49,817 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> ReadTimeout after 300.3s (try 1 of 2): The read operation timed out
+2026-10-13 20:58:04,681 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> 200 in 4.9s
+2026-10-13 20:58:21,379 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:generateContent -> 200 in 6.7s
+2026-10-13 21:03:46,652 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> ReadTimeout after 300.4s (try 1 of 2): The read operation timed out
+2026-10-13 21:08:57,180 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> ReadTimeout after 300.5s (try 2 of 2): The read operation timed out
+2026-10-13 21:08:57,180 WARNING Google Cloud gemini-3-pro-image didn't answer (aiplatform.googleapis.com was reached but didn't answer within 300 s (the AI was too slow, not your internet).); trying gemini-nano-banana-2.1
+2026-10-13 21:09:09,144 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-nano-banana-2.1:generateContent -> 404 in 12.0s (try 1 of 2): {
+  "error": {
+    "code": 404,
+    "message": "Publisher model `projects/166061125098/locations/us-central1/publishers/google/models/gemini-nano-banana-2.1` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-10-13 21:10:00,771 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 22.0s
+2026-10-14 12:50:04,166 INFO job a274d30a769c: download
+2026-10-14 12:52:11,528 INFO job a274d30a769c: transcribe
+2026-10-14 12:52:31,396 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.9s
+2026-10-14 12:52:32,674 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.2s
+2026-10-14 12:52:33,021 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.5s
+2026-10-14 12:52:33,219 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.7s
+2026-10-14 12:52:33,456 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.0s
+2026-10-14 12:52:34,399 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-14 12:52:39,310 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.9s
+2026-10-14 12:52:41,310 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.6s
+2026-10-14 12:52:42,017 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.0s
+2026-10-14 12:52:43,413 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.0s
+2026-10-14 12:52:43,783 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.6s
+2026-10-14 12:52:44,193 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.8s
+2026-10-14 12:52:45,840 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 3.8s
+2026-10-14 12:52:46,259 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 4.9s
+2026-10-14 12:52:48,252 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-14 12:52:49,083 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.3s
+2026-10-14 12:52:50,861 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.4s
+2026-10-14 12:52:51,437 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.2s
+2026-10-14 12:52:53,399 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.1s
+2026-10-14 12:52:57,183 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.3s
+2026-10-14 12:52:57,469 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.4s
+2026-10-14 12:52:57,541 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.3s
+2026-10-14 12:52:58,520 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 12.7s
+2026-10-14 12:52:59,527 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-14 12:52:59,550 INFO job a274d30a769c: pick
+2026-10-14 12:55:29,786 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 150.2s (try 1 of 3): The read operation timed out
+2026-10-14 12:58:10,081 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 150.3s (try 2 of 3): The read operation timed out
+2026-10-14 13:01:00,631 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 150.5s (try 3 of 3): The read operation timed out
+2026-10-14 13:01:00,633 ERROR job a274d30a769c failed at step pick: aiplatform.googleapis.com was reached but didn't answer within 150 s (the AI was too slow, not your internet).
+2026-10-14 13:12:01,546 INFO job a274d30a769c: pick
+2026-10-14 13:14:31,823 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 150.3s (try 1 of 3): The read operation timed out
+2026-10-14 13:17:12,262 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 150.4s (try 2 of 3): The read operation timed out
+2026-10-14 13:20:02,463 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 150.2s (try 3 of 3): The read operation timed out
+2026-10-14 13:20:02,464 ERROR job a274d30a769c failed at step pick: aiplatform.googleapis.com was reached but didn't answer within 150 s (the AI was too slow, not your internet).
+2026-10-14 13:36:46,019 INFO job a274d30a769c: pick
+2026-10-14 13:46:46,479 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.5s (try 1 of 2): The read operation timed out
+2026-10-14 13:56:56,659 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 2 of 2): The read operation timed out
+2026-10-14 13:56:56,660 WARNING Google Cloud gemini-3.8-flash didn't answer (aiplatform.googleapis.com was reached but didn't answer within 600 s (the AI was too slow, not your internet).); trying gemini-3.5-flash
+2026-10-14 13:57:35,246 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> 200 in 38.6s
+2026-10-14 14:07:35,435 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 1 of 2): The read operation timed out
+2026-10-14 14:07:54,355 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> 429 in 8.9s (try 2 of 2): {
+  "error": {
+    "code": 429,
+    "message": "Resource exhausted. Please try again later. Please refer to https://cloud.google.com/vertex-ai/generative-ai/docs/error-code-429 for more details.",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
+
+2026-10-14 14:07:54,355 WARNING Google Cloud gemini-3.5-flash answered 429; trying gemini-3.8-flash
+2026-10-14 14:17:54,497 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.1s (try 1 of 2): The read operation timed out
+2026-10-14 14:18:40,970 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 36.5s
+2026-10-14 14:18:40,972 INFO job a274d30a769c: voice
+2026-10-14 14:18:43,786 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-14 14:18:46,721 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.9s
+2026-10-14 14:18:49,442 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.7s
+2026-10-14 14:18:52,149 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.7s
+2026-10-14 14:18:54,789 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.6s
+2026-10-14 14:18:57,651 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.9s
+2026-10-14 14:19:00,827 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 3.2s
+2026-10-14 14:19:03,696 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.9s
+2026-10-14 14:19:03,698 INFO job a274d30a769c: render
+2026-10-14 14:19:24,901 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 9.7s
+2026-10-14 14:20:34,852 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 26.3s
+2026-10-14 14:21:26,306 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 35.0s
+2026-10-14 14:22:49,817 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 22.0s
+2026-10-14 14:23:14,735 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 8.3s
+2026-10-14 14:24:49,115 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 31.1s
+2026-10-14 14:25:18,359 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 19.1s
+2026-10-14 14:26:30,774 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 23.0s
+2026-10-14 14:26:56,612 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 13.4s
+2026-10-14 14:28:14,256 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 23.9s
+2026-10-14 14:28:30,808 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 3.2s
+2026-10-14 14:29:55,291 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 26.4s
+2026-10-14 14:30:27,752 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 14.5s
+2026-10-14 14:32:05,674 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 33.2s
+2026-10-14 14:32:37,748 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 15.5s
+2026-10-14 14:34:10,562 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 28.6s
+2026-10-14 16:04:53,338 INFO job c75662cc021c: download
