@@ -182,6 +182,15 @@ $$\text{Start Time} = \max\left(s_a - 0.25,\; \frac{e_{a-1} + s_a}{2},\; 0.0\rig
 $$\text{End Time} = \min\left(e_b + \delta,\; \frac{e_b + s_{b+1}}{2},\; \text{duration}\right)$$
 Where $\delta = 0.7\text{s}$ at the final clip exit (allowing natural vocal decay) and $\delta = 0.3\text{s}$ at intermediate part joins. This guarantees no clipped consonants or unnatural abruptness.
 
+### 4.7 Visual-First & Silent/Action Moment Picking (`pick_visual_moments`)
+For videos with no audio, minimal speech (< 5 words), or non-verbal content (gaming montages, workout routines, sports highlights, silent tutorials, b-roll), Tiny Clipper automatically switches to a visual-first pipeline:
+1. **Local Energy Pre-Filtering (`scan_motion_energy`):** A fast 2 FPS low-resolution (160×90) scan calculates inter-frame absolute differences via OpenCV to measure movement intensity across time.
+2. **Scene Cut Density:** Hard visual transitions are detected via FFmpeg's `select='gt(scene,0.3)'`. Windows with dense scene cuts or high motion receive priority scoring.
+3. **Sliding Window Selection (`find_visual_windows`):** Candidate windows of 45s (stepped every 10s) are scored and non-maximum suppressed (maximum 40% overlap).
+4. **Shot Boundary Snapping:** The start and end of each visual candidate are snapped to the nearest scene cut within $\pm 5\text{s}$, preventing cuts in the middle of a continuous action shot.
+5. **Multimodal Hook Scoring (`ask_gemini_visual_moments`):** Representative keyframes from each candidate window are evaluated by Gemini Vision, which generates a viral title, a 3-second curiosity gap hook line (e.g., *"Wait until the very end"*), and a visual action score. If offline or without API keys, local motion ranking is used directly.
+6. **Caption-Free & Silent Rendering:** Subtitle burning is cleanly bypassed (`captions: false`), the curiosity gap question is burned into the top-third intro badge, and if the source has no audio track, a standardized silent stereo audio bed (`anullsrc`) is generated to ensure full platform compatibility.
+
 ---
 
 ## 5. How the Subject Is Picked Up & Framed (Framing Engine)

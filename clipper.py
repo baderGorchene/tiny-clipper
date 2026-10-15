@@ -939,6 +939,173 @@ def pick_moments(sentences, duration, n, keys, progress):
     raise ClipperError(" ".join(errors) or "Add a Groq or Gemini key in Keys first.")
 
 
+# --- visual & action moment detection (non-verbal / silent) -------------------
+
+VISUAL_MOMENTS_PROMPT = """You are an expert short-form video editor choosing viral clips from video frames.
+Below are sequential frames from candidate moments of an action, sports, gameplay, workout, tutorial or silent video.
+For each candidate moment #{idx} (from {start:.1f}s to {end:.1f}s):
+1. "title": catchy, viral hook title (max 8 words).
+2. "hook_line": curiosity gap question or bold teaser (max 8 words) burned on screen for the first 3 seconds (e.g. "Wait until the very end", "How did they survive this?", "The cleanest play you'll see").
+3. "score": action/interest rating (0 to 100) based on visual movement, intensity, and viewer entertainment value.
+
+Answer with JSON only:
+{"clips": [
+  {"id": 1, "title": "Insane Comeback in Final Seconds", "hook_line": "Watch how close this was", "score": 92}
+]}"""
+
+
+def scan_motion_energy(src, duration, fps=2):
+    """Scan video motion intensity at low resolution (160x90). Returns [(t, score)]."""
+    import cv2
+    import numpy as np
+    sw, sh = 160, 90
+    cmd = [ffmpeg_exe(), "-hide_banner", "-loglevel", "error",
+           "-i", src, "-an", "-vf", f"fps={fps},scale={sw}:{sh}",
+           "-f", "rawvideo", "-pix_fmt", "gray", "-"]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    size = sw * sh
+    prev, scores, t = None, [], 0.0
+    try:
+        while True:
+            buf = proc.stdout.read(size)
+            if len(buf) < size:
+                break
+            frame = np.frombuffer(buf, np.uint8).reshape(sh, sw)
+            if prev is not None:
+                diff = float(np.mean(cv2.absdiff(prev, frame)))
+                scores.append((round(t, 2), diff))
+            prev = frame
+            t += 1.0 / fps
+    finally:
+        proc.stdout.close()
+        proc.wait()
+    return scores
+
+
+def extract_window_frames(src, start, end, count=4):
+    """Sample small JPEG frames across [start, end] for visual evaluation."""
+    step = (end - start) / (count + 1)
+    frames = []
+    for k in range(1, count + 1):
+        t = start + k * step
+        cmd = [ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-ss", f"{t:.3f}",
+               "-i", src, "-frames:v", "1", "-vf", "scale=480:-2", "-q:v", "5",
+               "-f", "image2", "pipe:1"]
+        proc = subprocess.run(cmd, capture_output=True)
+        if proc.returncode == 0 and len(proc.stdout) > 500:
+            frames.append(proc.stdout)
+    return frames
+
+
+def find_visual_windows(src, duration, n=4, win_len=45):
+    """Find the highest-motion candidate windows snapped to scene cuts."""
+    cuts = scene_cuts(src, 0, duration)
+    motion_scores = scan_motion_energy(src, duration)
+    if not motion_scores:
+        step = max(MIN_CLIP, duration / max(1, n))
+        return [{"start": round(i * step, 2), "end": round(min(duration, (i + 1) * step), 2), "score": 50}
+                for i in range(n)]
+
+    windows = []
+    step = 10.0
+    t = 0.0
+    while t + MIN_CLIP <= duration:
+        w_end = min(duration, t + win_len)
+        win_motion = [m for ts, m in motion_scores if t <= ts <= w_end]
+        win_cuts = [c for c in cuts if t <= c <= w_end]
+        avg_motion = sum(win_motion) / max(1, len(win_motion))
+        score = avg_motion * (1.0 + 0.15 * min(6, len(win_cuts)))
+        windows.append({"start": t, "end": w_end, "score": score, "cuts": win_cuts})
+        t += step
+
+    windows.sort(key=lambda w: w["score"], reverse=True)
+
+    picked = []
+    for w in windows:
+        overlap = any(not (w["end"] <= p["start"] + 15 or w["start"] >= p["end"] - 15) for p in picked)
+        if not overlap:
+            picked.append(w)
+            if len(picked) >= n * 2:
+                break
+
+    results = []
+    for w in picked:
+        s, e = w["start"], w["end"]
+        near_s = [c for c in cuts if abs(c - s) <= 5.0]
+        if near_s:
+            s = near_s[0]
+        near_e = [c for c in cuts if abs(c - e) <= 5.0]
+        if near_e:
+            e = near_e[-1]
+        s = max(0.0, s)
+        e = min(duration, e)
+        if e - s < MIN_CLIP:
+            e = min(duration, s + MIN_CLIP)
+            if e - s < MIN_CLIP and s > 0:
+                s = max(0.0, e - MIN_CLIP)
+        if e - s > MAX_CLIP:
+            e = s + MAX_CLIP
+        results.append({"start": round(s, 2), "end": round(e, 2), "score": round(w["score"], 2)})
+
+    results.sort(key=lambda x: x["start"])
+    return results[:n]
+
+
+def pick_visual_moments(src, duration, n, keys, progress=None):
+    """Pick action & visual highlights without requiring speech; returns (clips, model_name)."""
+    if progress:
+        progress("Scanning video motion & visual scene cuts", 0.1)
+    candidates = find_visual_windows(src, duration, n=n)
+    if not candidates:
+        return [], "none"
+
+    if progress:
+        progress("Sampling candidate keyframes for visual evaluation", 0.4)
+    for c in candidates:
+        c["frames"] = extract_window_frames(src, c["start"], c["end"], count=3)
+
+    clips_meta = {}
+    if keys and any(split_keys(keys)):
+        if progress:
+            progress("Evaluating visual hooks with Gemini Vision", 0.6)
+        import base64
+        parts = [{"text": VISUAL_MOMENTS_PROMPT}]
+        for idx, c in enumerate(candidates, 1):
+            parts.append({"text": f"\nCandidate moment #{idx} (from {c['start']:.1f}s to {c['end']:.1f}s):"})
+            for img in c.get("frames", []):
+                parts.append({"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(img).decode()}})
+        try:
+            resp = gemini_json(parts, keys, 0.2, VERTEX_VISION_MODELS)
+            for item in answer_list(resp, "clips"):
+                if isinstance(item, dict) and "id" in item:
+                    clips_meta[int(item["id"])] = item
+        except Exception as e:
+            log.warning("Gemini visual evaluation failed (%s); using motion scores", e)
+
+    out_clips = []
+    for idx, c in enumerate(candidates, 1):
+        meta = clips_meta.get(idx, {})
+        title = meta.get("title") or f"Action Highlight {idx}"
+        hook_line = meta.get("hook_line") or title
+        score = int(meta.get("score") or min(95, max(60, round(c["score"] * 6))))
+        start, end = c["start"], c["end"]
+        out_clips.append({
+            "i": idx,
+            "title": title,
+            "score": score,
+            "start": start,
+            "end": end,
+            "length": round(end - start),
+            "parts": [{"s": start, "e": end}],
+            "intro": {"start": start, "end": round(min(start + 3.2, end), 2)},
+            "voiceover": hook_line,
+            "visual": True,
+            "framing": "auto"
+        })
+
+    return out_clips, "Gemini Vision" if clips_meta else "Motion Scanner"
+
+
 # --- hook voice clean-up -------------------------------------------------------
 
 def _norm(word):
@@ -1449,11 +1616,16 @@ def render_edit(src, edl, words, out_dir, name, intro=None, voice=None, plan=Non
         return sum(1 for x in args if x == "-i") - 1
 
     total, mapped = 0.0, []
+    has_src_audio = media_info(src)[1]
     for k, seg in enumerate(parts):
         d = seg["e"] - seg["s"]
         i = add_input("-ss", f"{seg['s']:.3f}", "-t", f"{d:.3f}", "-i", src)
         graph.append(part_video(f"[{i}:v]", seg["frame"], size, plan, seg["s"], d, out_dir, f"p{k}x", f"{name}_p{k}.cmd"))
-        graph.append(f"[{i}:a]volume={float(seg.get('volume', 1)):.2f},{SAME}[a{k}]")
+        if has_src_audio:
+            graph.append(f"[{i}:a]volume={float(seg.get('volume', 1)):.2f},{SAME}[a{k}]")
+        else:
+            sil_idx = add_input("-f", "lavfi", "-t", f"{d:.3f}", "-i", "anullsrc=r=48000:cl=stereo")
+            graph.append(f"[{sil_idx}:a]{SAME}[a{k}]")
         mapped += [{**w, "s": w["s"] - seg["s"] + total, "e": w["e"] - seg["s"] + total}
                    for w in words if w["s"] >= seg["s"] - 0.05 and w["e"] <= seg["e"] + 0.05]
         total += d

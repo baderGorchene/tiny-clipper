@@ -249,9 +249,42 @@ def test_kinetic_word_pop_in_ass():
     assert r"\fscx112\fscy112" in ass and r"\fscx100\fscy100" in ass
 
 
+def test_visual_windows_and_moments():
+    real_cuts = clipper.scene_cuts
+    real_motion = clipper.scan_motion_energy
+    real_frames = clipper.extract_window_frames
+
+    # Mock cuts and motion scores
+    clipper.scene_cuts = lambda src, s, e: [42.0, 95.0, 140.0]
+    clipper.scan_motion_energy = lambda src, dur, fps=2: [
+        (t, 25.0 if 40 <= t <= 90 else 2.0) for t in range(0, int(dur), 1)
+    ]
+    clipper.extract_window_frames = lambda src, s, e, count=4: [b"fake_jpeg"]
+
+    try:
+        windows = clipper.find_visual_windows("dummy.mp4", 180.0, n=2)
+        assert len(windows) == 2
+        # Highest motion window should be selected first
+        assert windows[0]["start"] <= 45.0 <= windows[0]["end"]
+        assert windows[0]["end"] - windows[0]["start"] >= clipper.MIN_CLIP
+
+        # Visual moments with Gemini mocked or fallback
+        clips, ai = clipper.pick_visual_moments("dummy.mp4", 180.0, 2, None)
+        assert len(clips) == 2
+        assert clips[0]["visual"] is True
+        assert clips[0]["intro"] is not None
+        assert "voiceover" in clips[0]
+        assert clips[0]["parts"][0]["s"] == clips[0]["start"]
+    finally:
+        clipper.scene_cuts = real_cuts
+        clipper.scan_motion_energy = real_motion
+        clipper.extract_window_frames = real_frames
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
             fn()
             print("ok", name)
+
 

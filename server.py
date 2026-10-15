@@ -406,29 +406,41 @@ def run_job(job, source_url, source_path):
                 except OSError as e:
                     log.warning("Couldn't rename folder to %s: %s", target_folder, e)
         duration, has_audio = clipper.media_info(source_path)
-        if not has_audio:
-            raise clipper.ClipperError("This video has no sound. Tiny Clipper finds the best moments "
-                                       "from what people say, so it needs a video with speech.")
         if duration < clipper.MIN_CLIP:
             raise clipper.ClipperError("This video is too short to clip. Use one longer than a minute.")
         job["duration"] = round(duration)
 
-        transcript = load_transcript(folder)
-        if transcript and "segments" in transcript:
-            words, segments, job["language"] = transcript["words"], transcript["segments"], transcript.get("language")
-        else:
-            stage("transcribe", "Turning speech into text")
-            words, segments, job["language"] = clipper.transcribe(source_path, keys, progress)
-            if not words:
-                raise clipper.ClipperError("No speech was found in this video.")
-            # kept so clips can be edited later, and so a retry skips this step
-            save_words(job["id"], words, segments=segments, language=job["language"])
+        words, segments = [], []
+        is_visual = not has_audio or bool(job.get("visual"))
+        if not is_visual:
+            transcript = load_transcript(folder)
+            if transcript and "segments" in transcript:
+                words, segments, job["language"] = transcript["words"], transcript["segments"], transcript.get("language")
+            else:
+                stage("transcribe", "Turning speech into text")
+                try:
+                    words, segments, job["language"] = clipper.transcribe(source_path, keys, progress)
+                except Exception as e:
+                    log.warning("Speech transcription error (%s); switching to visual moment detection", e)
+                    words, segments = [], []
+                if not words or len(words) < 5:
+                    log.info("No speech or minimal spoken words found; switching to visual moment detection")
+                    is_visual = True
+                else:
+                    save_words(job["id"], words, segments=segments, language=job["language"])
 
-        if not job.get("picked"):
-            stage("pick", "Finding the best moments")  # then a second pass checks each clip's story
-            sentences = clipper.build_sentences(words, segments)
-            job["picked"], job["ai"] = clipper.pick_moments(sentences, duration, job["count"], keys, progress)
-            write_job(job)
+        job["visual"] = is_visual
+        if is_visual:
+            if not job.get("picked"):
+                stage("pick_visual", "Finding visual hooks and action highlights")
+                job["picked"], job["ai"] = clipper.pick_visual_moments(source_path, duration, job["count"], keys, progress)
+                write_job(job)
+        else:
+            if not job.get("picked"):
+                stage("pick", "Finding the best moments")  # then a second pass checks each clip's story
+                sentences = clipper.build_sentences(words, segments)
+                job["picked"], job["ai"] = clipper.pick_moments(sentences, duration, job["count"], keys, progress)
+                write_job(job)
         made = {c.get("i") for c in job["clips"]}
         clips = [(i, c) for i, c in enumerate(job["picked"], 1) if i not in made]
 
@@ -470,8 +482,9 @@ def run_job(job, source_url, source_path):
                     clip["framing"] = clipper.describe_framing(plan)
                 progress(f"Cutting clip {i} of {len(job['picked'])}", k / len(clips))
                 clip["layout"] = job["layout"]
+                captions_on = job.get("captions", True) and not job.get("visual")
                 clip["file"] = clipper.render_clip(source_path, clip, words, folder, i, job["layout"],
-                                                   job.get("captions", True), voices.get(i), plan)
+                                                   captions_on, voices.get(i), plan)
                 clip["length"] = round(clipper.media_info(os.path.join(folder, clip["file"]))[0])
             except Exception as e:  # one bad clip doesn't cost the others: Retry makes it later
                 log.exception("job %s: clip %d failed", job["id"], i)
