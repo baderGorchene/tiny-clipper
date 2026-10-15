@@ -291,17 +291,22 @@ If enabled, the clip begins with a high-retention teaser before the main story s
 ### 6.2 Animated Karaoke Captions (`build_edit_ass`)
 - **Word Chunking:** Subtitles are grouped into punchy bursts of at most 3 words, breaking on commas, periods, or pauses exceeding 0.6s (`caption_groups`).
 - **Visual Styling:** Large Arial bold font (86pt), opaque black outline (7pt), subtle drop shadow, positioned in the lower-middle safe area ($y \approx 71\%$).
-- **Active Word Highlighting:** The currently spoken word lights up in gold (`{\c&H00D7FF&}`), while inactive words remain crisp white (`{\c&HFFFFFF&}`).
+- **Active Word Highlighting & Kinetic Pop:** The currently spoken word dynamically scales to 112% and lights up in gold (`{\fscx112\fscy112\c&H00D7FF&}`), creating a punchy word-pop effect before returning to standard white font (`{\fscx100\fscy100\c&HFFFFFF&}`).
 
 ### 6.3 Dual-Layout Composition (Auto Mode)
 For segments categorized as `fit` (screen recordings, slides, wide shots):
 - The original video is letterboxed in full without cropping.
-- The background is filled with an enlarged, blurred copy of the same video (`scale=1080:1920,gblur=sigma=30`).
+- The background is filled with an enlarged, blurred copy of the same video (`fit_chain`). To minimize CPU overhead, the background layer is first downsampled (`scale=270:480`), blurred using `boxblur=8:2`, and scaled back up to 1080×1920 with bilinear filtering, achieving ~5× faster rendering.
 - FFmpeg's `overlay=enable='between(t, s, e)'` toggles between face-tracked crop and full-frame fit seamlessly mid-clip.
 
-### 6.4 Audio Normalization & Mixing
+### 6.4 Audio Normalization, Ducking & Mixing
 - All audio inputs are resampled to a standardized format: `aresample=48000,aformat=channel_layouts=stereo`.
-- Custom sound effects (whoosh, pop, ding, boom, click) or uploaded background tracks are mixed using `amix=inputs=N:duration=first:normalize=0`.
+- **Automatic Audio Ducking:** Background music or ambient audio tracks (duration $\ge$ 5s) are automatically ducked under the speaker's voice track via FFmpeg's `sidechaincompress=threshold=0.10:ratio=4:attack=50:release=450`. When speech pauses, the music volume smoothly returns to 100%. Ducking can be toggled per track in the timeline editor.
+- Short sound effects (whoosh, pop, ding, boom, click) are mixed at their full configured volume without ducking.
+
+### 6.5 Hardware-Accelerated Video Encoding
+- When rendering with FFmpeg, Tiny Clipper auto-detects hardware H.264 video encoders (`h264_nvenc` for NVIDIA, `h264_qsv` for Intel QuickSync, `h264_videotoolbox` on macOS, and `h264_mf` via Windows MediaFoundation).
+- If no supported GPU hardware is available or if hardware encoding returns an error, it seamlessly falls back to CPU `libx264` (`-preset veryfast -crf 21`). Software encoding can also be forced by setting `CLIPPER_FORCE_CPU=1`.
 
 ---
 

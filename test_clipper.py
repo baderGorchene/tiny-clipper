@@ -227,8 +227,31 @@ def test_safe_filename():
     assert len(clipper.safe_filename("A" * 150)) <= 100
 
 
+def test_video_encoder_args():
+    enc = clipper.video_encoder_args()
+    assert "-c:v" in enc
+    assert "-pix_fmt" in enc and "yuv420p" in enc
+    soft = clipper.video_encoder_args(force_software=True)
+    assert soft == ["-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p"]
+
+
+def test_downscaled_fit_chain():
+    chain = clipper.fit_chain("tag")
+    assert "scale=270:480" in chain
+    assert "boxblur=8:2" in chain
+    assert "scale=1080:1920:flags=bilinear" in chain
+
+
+def test_kinetic_word_pop_in_ass():
+    assert r"\fscx112\fscy112" in clipper.HIGHLIGHT
+    assert r"\fscx100\fscy100" in clipper.NORMAL
+    ass = clipper.build_ass([{"w": "Pop", "s": 0.0, "e": 0.5}], 0.0, 1.0)
+    assert r"\fscx112\fscy112" in ass and r"\fscx100\fscy100" in ass
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
             fn()
             print("ok", name)
+

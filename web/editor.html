@@ -883,10 +883,13 @@
           <p class="small">Shows ${fmt(item.t0)} → ${fmt(item.t1)}. Drag it on the preview to place it; drag or stretch it on the timeline to time it.</p>
           <button class="btn ghost" type="button" data-act="delete" style="margin-top:8px">🗑 Delete text</button>`;
       } else if (sel?.type === 'sound' && item) {
+        const isSfx = item.file && item.file.startsWith('sfx:');
+        const duckChecked = item.duck !== undefined ? Boolean(item.duck) : (!isSfx && item.dur >= 5);
         I.innerHTML = `<h2>♪ ${esc(item.name)}</h2>
           <p class="small">Starts at ${fmt(item.t0)} · ${item.dur.toFixed(1)}s long. Drag it on the timeline to move it.</p>
           <label for="iSVol">Volume <span class="small">${Math.round(item.volume * 100)}%</span></label>
           <input type="range" id="iSVol" data-p="volume" min="0" max="2" step="0.05" value="${item.volume}">
+          <label class="check" style="margin-top:10px"><input type="checkbox" data-p="duck" ${duckChecked ? 'checked' : ''}> Lower music during speech (audio ducking)</label>
           <button class="btn ghost" type="button" data-act="delete" style="margin-top:12px">🗑 Delete sound</button>`;
       } else {
         const capSel = sel?.type === 'captions';

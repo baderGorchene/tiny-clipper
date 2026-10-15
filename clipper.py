@@ -108,6 +108,43 @@ def ffmpeg_exe():
     return local
 
 
+_encoder_args = None
+
+
+def video_encoder_args(force_software=False):
+    """Return best available H.264 video encoder arguments.
+    Probes hardware encoders (NVENC, QSV, VideoToolbox, AMF, MediaFoundation)
+    and falls back smoothly to CPU libx264."""
+    global _encoder_args
+    if force_software or os.environ.get("CLIPPER_FORCE_CPU"):
+        return ["-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p"]
+    if _encoder_args is not None:
+        return list(_encoder_args)
+
+    candidates = [
+        ("h264_nvenc", ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "22", "-pix_fmt", "yuv420p"]),
+        ("h264_qsv", ["-c:v", "h264_qsv", "-global_quality", "23", "-pix_fmt", "yuv420p"]),
+        ("h264_videotoolbox", ["-c:v", "h264_videotoolbox", "-b:v", "5000k", "-pix_fmt", "yuv420p"]),
+        ("h264_amf", ["-c:v", "h264_amf", "-quality", "speed", "-rc", "cbr", "-b:v", "5000k", "-pix_fmt", "yuv420p"]),
+        ("h264_mf", ["-c:v", "h264_mf", "-b:v", "5000k", "-pix_fmt", "yuv420p"]),
+    ]
+    for name, args in candidates:
+        try:
+            cmd = [ffmpeg_exe(), "-hide_banner", "-f", "lavfi", "-i", "color=s=64x64:d=0.1", *args, "-f", "null", "-"]
+            proc = subprocess.run(cmd, capture_output=True)
+            if proc.returncode == 0:
+                log.info("Using hardware video encoder: %s", name)
+                _encoder_args = list(args)
+                return list(_encoder_args)
+        except Exception:
+            pass
+
+    log.info("Using software video encoder: libx264")
+    _encoder_args = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p"]
+    return list(_encoder_args)
+
+
+
 def run_ffmpeg(args, cwd=None):
     proc = subprocess.run([ffmpeg_exe(), "-hide_banner", "-y", *args], cwd=cwd,
                           capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -243,6 +280,7 @@ def download(url, out_dir, progress):
         "noplaylist": True,
         "quiet": True,
         "no_warnings": True,
+        "concurrent_fragment_downloads": 4,
         "ffmpeg_location": os.path.dirname(ffmpeg_exe()),
         "progress_hooks": [hook],
     }
@@ -1007,8 +1045,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 # Big hook line at the top during the cold open, on an accent-coloured box (BGR #FF5A36).
 HOOK_STYLE = ("Style: Hook,Arial,76,&H00FFFFFF,&H00FFFFFF,&H00365AFF,&H00000000,"
               "-1,0,0,0,100,100,0,0,3,18,0,8,80,80,300,1\n")
-HIGHLIGHT = r"{\c&H00D7FF&}"  # ASS colours are BGR: gold, #FFD700
-NORMAL = r"{\c&HFFFFFF&}"
+HIGHLIGHT = r"{\fscx112\fscy112\c&H00D7FF&}"  # Punchy kinetic word pop (112% scale) + gold highlight (#FFD700)
+NORMAL = r"{\fscx100\fscy100\c&HFFFFFF&}"
 
 
 def ass_time(t):
@@ -1075,9 +1113,10 @@ FILL = "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,sets
 
 
 def fit_chain(tag):
-    """Whole frame on a blurred copy of itself: nothing cut off (screens, slides, wide shots)."""
-    return (f"split[{tag}a][{tag}b];[{tag}a]scale=1080:1920:force_original_aspect_ratio=increase,"
-            f"crop=1080:1920,boxblur=30:3[{tag}bg];[{tag}b]scale=1080:1920:"
+    """Whole frame on a blurred copy of itself: nothing cut off (screens, slides, wide shots).
+    Downscales the background layer before blurring for ~5x faster rendering."""
+    return (f"split[{tag}a][{tag}b];[{tag}a]scale=270:480:force_original_aspect_ratio=increase,"
+            f"crop=270:480,boxblur=8:2,scale=1080:1920:flags=bilinear[{tag}bg];[{tag}b]scale=1080:1920:"
             f"force_original_aspect_ratio=decrease[{tag}fg];[{tag}bg][{tag}fg]overlay=(W-w)/2:(H-h)/2,setsar=1")
 
 
@@ -1423,12 +1462,35 @@ def render_edit(src, edl, words, out_dir, name, intro=None, voice=None, plan=Non
         f.write(build_edit_ass(mapped, total, edl.get("captions") or {}, edl.get("texts") or []))
     graph.append(f"[vc]subtitles={name}.ass[mv]")  # relative: cwd=out_dir dodges Windows path escaping
 
-    mix = []
+    duck_streams, sfx_streams = [], []
     for j, snd in enumerate(edl.get("sounds") or []):
         i = add_input("-i", sound_path(snd["file"], out_dir))
-        graph.append(f"[{i}:a]{SAME},volume={float(snd.get('volume', 1)):.2f},adelay={snd['t0'] * 1000:.0f}:all=1[s{j}]")
-        mix.append(f"[s{j}]")
-    graph.append(f"[ac]{''.join(mix)}amix=inputs={1 + len(mix)}:duration=first:normalize=0[ma]" if mix else "[ac]anull[ma]")
+        tag = f"s{j}"
+        graph.append(f"[{i}:a]{SAME},volume={float(snd.get('volume', 1)):.2f},adelay={snd['t0'] * 1000:.0f}:all=1[{tag}]")
+        file_name = str(snd.get("file", ""))
+        dur = float(snd.get("dur") or 0.0)
+        # Background music / ambient audio (> 5s and not built-in SFX) ducks under the speaker's voice
+        should_duck = snd.get("duck") is True or (snd.get("duck") is None and dur >= 5.0 and not file_name.startswith("sfx:"))
+        if should_duck:
+            duck_streams.append(f"[{tag}]")
+        else:
+            sfx_streams.append(f"[{tag}]")
+
+    if duck_streams:
+        if len(duck_streams) > 1:
+            graph.append(f"{''.join(duck_streams)}amix=inputs={len(duck_streams)}:duration=first:normalize=0[mpre]")
+            music_in = "[mpre]"
+        else:
+            music_in = duck_streams[0]
+        # Duck the background music under the spoken voice [ac]
+        graph.append(f"{music_in}[ac]sidechaincompress=threshold=0.10:ratio=4:attack=50:release=450[ducked]")
+        final_inputs = ["[ac]", "[ducked]", *sfx_streams]
+        graph.append(f"{''.join(final_inputs)}amix=inputs={len(final_inputs)}:duration=first:normalize=0[ma]")
+    elif sfx_streams:
+        final_inputs = ["[ac]", *sfx_streams]
+        graph.append(f"{''.join(final_inputs)}amix=inputs={len(final_inputs)}:duration=first:normalize=0[ma]")
+    else:
+        graph.append("[ac]anull[ma]")
 
     if not intro:
         maps = ["-map", "[mv]", "-map", "[ma]"]
@@ -1458,10 +1520,22 @@ def render_edit(src, edl, words, out_dir, name, intro=None, voice=None, plan=Non
         graph.append("[iv][ia][mv][ma]concat=n=2:v=1:a=1[v][a]")
         maps = ["-map", "[v]", "-map", "[a]"]
 
-    run_ffmpeg([*args, "-filter_complex", ";".join(graph), *maps,
-                "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
-                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out_file],
-               cwd=out_dir)
+    enc_args = video_encoder_args()
+    try:
+        run_ffmpeg([*args, "-filter_complex", ";".join(graph), *maps,
+                    *enc_args,
+                    "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out_file],
+                   cwd=out_dir)
+    except ClipperError:
+        # Fall back to software CPU libx264 if hardware encoder encounters any issue
+        if "-c:v" in enc_args and "libx264" not in enc_args:
+            log.warning("Hardware video encoder failed; falling back to libx264 CPU encoder")
+            run_ffmpeg([*args, "-filter_complex", ";".join(graph), *maps,
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out_file],
+                       cwd=out_dir)
+        else:
+            raise
     return out_file
 
 

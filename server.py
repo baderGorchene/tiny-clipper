@@ -1025,9 +1025,14 @@ def clean_edl(raw, duration, folder):
         if not ((file.startswith("sfx:") and file[4:] in clipper.SFX) or
                 (re.fullmatch(r"sounds/[0-9a-f]{10}\.[a-z0-9]{2,5}", file) and os.path.exists(os.path.join(folder, file)))):
             continue
+        dur = num(snd.get("dur"), 0, 3600, 1.0)
+        duck = snd.get("duck")
+        if duck is not None:
+            duck = bool(duck)
         sounds.append({"id": str(snd.get("id", ""))[:24], "file": file, "name": str(snd.get("name", ""))[:40],
-                       "dur": num(snd.get("dur"), 0, 3600, 1.0), "t0": num(snd.get("t0"), 0, total, 0.0),
-                       "volume": num(snd.get("volume"), 0, 2, 1.0)})
+                       "dur": dur, "t0": num(snd.get("t0"), 0, total, 0.0),
+                       "volume": num(snd.get("volume"), 0, 2, 1.0),
+                       **({"duck": duck} if duck is not None else {})})
 
     cap, hook = obj(raw.get("captions")), obj(raw.get("hook"))
     return {"title": str(raw.get("title", "")).strip()[:100], "segments": segments, "texts": texts, "sounds": sounds,
