@@ -41,7 +41,8 @@ GROQ_LLM_MODELS = list(dict.fromkeys(
 GEMINI_MODEL = GEMINI_MODELS[0]
 LLM_TIMEOUT = 150  # a hung model counts as failed; long transcripts answer in well under a minute
 VERTEX_TIMEOUT = 600  # paid Cloud: wait out slow answers rather than fail the job
-STREAM_TIMEOUT = 600  # max silence on a streamed answer: long thinking sends nothing until it's done
+STREAM_TIMEOUT = 90  # max silence on a streamed answer; thought summaries keep a thinking model talking,
+# so silence this long means a hung request (good answers take 3-35 s, hung ones never finish)
 # With Google Cloud credit: Flash does everything (3.1 Pro preview kept timing out).
 VERTEX_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"]  # 3.5: when 3.8 hangs
 VERTEX_VISION_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"]
@@ -682,6 +683,9 @@ def gemini_request(body, keys, vertex_models=VERTEX_MODELS, studio_models=None, 
     Not for audio/images: their
     data would arrive in pieces."""
     method = "streamGenerateContent?alt=sse" if stream else "generateContent"
+    if stream:  # thought summaries stream while the model thinks: silence then means hung, not busy
+        body = {**body, "generationConfig": {**body.get("generationConfig", {}),
+                                             "thinkingConfig": {"includeThoughts": True}}}
     tries = 1  # retries: 2 attempts, then the next model
     timeout = min(timeout or VERTEX_TIMEOUT, STREAM_TIMEOUT) if stream else timeout
     studio, cloud = split_keys(keys)
