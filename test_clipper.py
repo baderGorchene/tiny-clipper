@@ -281,10 +281,101 @@ def test_visual_windows_and_moments():
         clipper.extract_window_frames = real_frames
 
 
+
+
+
+
+
+def test_pace_cuts_pauses_and_fillers_and_keeps_shots_short():
+    w = lambda t, s, e: {"w": t, "s": s, "e": e}
+    words = [w("Stop", 0.0, 0.4), w("doing", 0.45, 0.9), w("this.", 0.95, 1.3), w("um", 1.5, 1.8),
+             w("It", 2.6, 2.8), w("ruins", 2.85, 3.3), w("your", 3.35, 3.6), w("knees.", 3.65, 4.2)]
+    words += [w(f"w{k}", 5.0 + k * 0.4, 5.35 + k * 0.4) for k in range(20)]  # 8 s of non-stop talk
+    shots = clipper.pace([{"s": 0.0, "e": 4.5}, {"s": 5.0, "e": 13.2}], words)
+    assert shots[0] == {"s": 0.0, "e": 1.36, "join": False}  # the "um" and the pause after it are gone
+    assert shots[1]["s"] == 2.54 and shots[1]["e"] == 4.26  # first part ends just after its last word
+    assert shots[2]["join"] and not any(x["join"] for x in shots[3:])
+    assert all(x["e"] - x["s"] <= clipper.SHOT + 0.5 for x in shots[2:])  # a cut every ~3 s
+    assert shots[-1]["e"] == 13.2  # the payoff keeps its tail
+    edl = clipper.clip_edl({"title": "t", "start": 0, "end": 13.2, "shots": shots, "intro": None, "keywords": ["knees"]}, "auto")
+    assert [s["frame"]["zoom"] for s in edl["segments"][:3]] == [1.0, clipper.PUNCH, 1.0]
+    assert [x["file"] for x in edl["sounds"]] == ["sfx:whoosh"] and edl["texts"][0]["t1"] == 2.5
+    assert clipper.KEYWORD + "knees." in clipper.build_ass(words, 0, 5, ["Knees"])
+
+
+def test_hook_voice_tries_each_service_the_mode_allows():
+    calls = []
+    def fail(name):
+        def f(*a):
+            calls.append(name)
+            raise clipper.ClipperError(name + " down")
+        return f
+    real = clipper.gemini_speak, clipper.cloud_speak, clipper.edge_speak, clipper.google_signin
+    try:
+        clipper.gemini_speak, clipper.cloud_speak = fail("gemini"), fail("cloud")
+        clipper.google_signin = lambda: ("token", "project")
+        clipper.edge_speak = lambda text, path: calls.append("edge") or path
+        keys = {"gemini": ["k"], "vertex": [], "groq": []}
+        assert clipper.speak("hi", {**keys, "mode": "hybrid_auto"}, "v") == "v.mp3"
+        assert calls == ["gemini", "cloud", "edge"]
+        calls.clear()
+        clipper.speak("hi", {**keys, "mode": "free_local"}, "v")  # no paid sign-in in free mode
+        assert calls == ["gemini", "edge"]
+        calls.clear()
+        try:  # Google Cloud only: no edge-tts fallback
+            clipper.speak("hi", {"gemini": [], "vertex": ["k"], "mode": "gcp_native"}, "v")
+            assert False, "should have raised"
+        except clipper.ClipperError as e:
+            assert calls == ["gemini", "cloud"] and "cloud down" in str(e)
+    finally:
+        clipper.gemini_speak, clipper.cloud_speak, clipper.edge_speak, clipper.google_signin = real
+
+
+def test_free_thumbnail_is_a_1080x1920_cover_from_the_sharpest_frame():
+    import os, tempfile
+    import cv2
+    import numpy as np
+    flat = cv2.imencode(".jpg", np.full((720, 1280, 3), 90, np.uint8))[1].tobytes()
+    busy = cv2.imencode(".jpg", np.random.default_rng(1).integers(0, 255, (720, 1280, 3), np.uint8))[1].tobytes()
+    img, _ = clipper.best_frame([flat, busy])
+    assert img.std() > 40  # picked the detailed frame, not the flat one
+    out = os.path.join(tempfile.mkdtemp(), "My clip, it's (great).jpg")
+    clipper.make_thumbnail([flat, busy], "Why nobody tells you this", "", {"gemini": ["free"], "vertex": []}, out)
+    assert cv2.imread(out).shape[:2] == (1920, 1080)
+    assert os.listdir(os.path.dirname(out)) == [os.path.basename(out)]  # temp files cleaned up
+
+
+def test_review_edits_keep_places_recut_runs_and_guard_lengths():
+    sents = sentences_every(5, 40)
+    picked = clipper.clean_clips([
+        {"parts": [[2, 9]], "title": "a", "score": 90, "teaser_id": 5, "voiceover": "Watch this"},
+        {"parts": [[20, 27]], "title": "b", "score": 70, "teaser_id": 22}], sents, 200, 2)
+    out = clipper.apply_review(picked, [
+        {"i": 1, "ids": [[2, 11]], "voiceover": " New hook ", "title": "A!"},  # two more sentences
+        {"i": 2, "keep": False}], sents, 200)
+    assert [c["dropped"] for c in out] == [False, True]  # dropped clips keep their place
+    a = out[0]
+    assert a["ids"] == [[2, 11]] and a["title"] == "A!" and a["voiceover"] == "New hook"
+    assert a["parts"][0]["e"] > picked[0]["parts"][0]["e"] and a["intro"] == picked[0]["intro"]
+    # Trimming the teaser sentence out falls back to the payoff sentence as the cold open.
+    trimmed = clipper.apply_review(picked, [{"i": 1, "ids": [[6, 13]]}], sents, 200)[0]
+    assert trimmed["intro"]["start"] == round(sents[13]["s"] - 0.1, 2)
+    for bad in ([{"i": 1, "ids": [[2, 2]]}],                                  # too short
+                [{"i": 1, "ids": [[2, 30]]}],                                 # too long
+                [{"i": 1, "ids": [[2, 9], [20, 22]]}],                        # takes clip 2's sentences
+                [{"i": 1, "keep": False}, {"i": 2, "keep": False}]):          # nothing left
+        try:
+            clipper.apply_review(picked, bad, sents, 200)
+            assert False, bad
+        except clipper.ClipperError:
+            pass
+    # Unattended: keeps the 85+ clips, or the best one when none scores that high.
+    assert [c["dropped"] for c in clipper.auto_review(picked)] == [False, True]
+    assert [c["dropped"] for c in clipper.auto_review([dict(picked[0], score=50), picked[1]])] == [True, False]
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
             fn()
             print("ok", name)
-
-

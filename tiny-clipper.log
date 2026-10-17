@@ -183,3 +183,412 @@ ConnectionResetError: [WinError 10054] An existing connection was forcibly close
 2026-10-14 14:32:37,748 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 15.5s
 2026-10-14 14:34:10,562 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 28.6s
 2026-10-14 16:04:53,338 INFO job c75662cc021c: download
+2026-10-16 04:23:39,672 INFO job I Tested The Most Dangerous Exercises (ft. Jeff Nippard): download
+2026-10-16 04:25:04,133 INFO job I Tested The Most Dangerous Exercises (ft. Jeff Nippard): transcribe
+2026-10-16 04:25:30,546 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.3s
+2026-10-16 04:25:31,797 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.5s
+2026-10-16 04:25:31,836 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.5s
+2026-10-16 04:25:32,268 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.0s
+2026-10-16 04:25:32,366 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.1s
+2026-10-16 04:25:32,897 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.6s
+2026-10-16 04:25:39,826 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.3s
+2026-10-16 04:25:40,110 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.3s
+2026-10-16 04:25:40,171 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.4s
+2026-10-16 04:25:40,496 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.2s
+2026-10-16 04:25:41,292 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-16 04:25:41,780 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-16 04:25:47,553 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.7s
+2026-10-16 04:25:48,182 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.7s
+2026-10-16 04:25:48,467 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.3s
+2026-10-16 04:25:49,328 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.5s
+2026-10-16 04:25:49,348 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.2s
+2026-10-16 04:25:49,748 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.5s
+2026-10-16 04:25:55,539 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.4s
+2026-10-16 04:25:55,642 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-16 04:25:56,793 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.3s
+2026-10-16 04:25:58,187 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-16 04:25:58,263 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-16 04:25:59,210 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.5s
+2026-10-16 04:26:02,730 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.2s
+2026-10-16 04:26:04,052 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.4s
+2026-10-16 04:26:04,270 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.1s
+2026-10-16 04:26:05,296 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.1s
+2026-10-16 04:26:05,575 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.8s
+2026-10-16 04:26:06,890 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.6s
+2026-10-16 04:26:06,922 INFO job I Tested The Most Dangerous Exercises (ft. Jeff Nippard): pick
+2026-10-16 04:36:07,100 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 1 of 2): The read operation timed out
+2026-10-16 04:46:17,292 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 2 of 2): The read operation timed out
+2026-10-16 04:46:17,292 WARNING Google Cloud gemini-3.8-flash didn't answer (aiplatform.googleapis.com was reached but didn't answer within 600 s (the AI was too slow, not your internet).); trying gemini-3.5-flash
+2026-10-16 04:56:17,460 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 1 of 2): The read operation timed out
+2026-10-16 05:06:27,698 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 2 of 2): The read operation timed out
+2026-10-16 05:06:27,699 ERROR job I Tested The Most Dangerous Exercises (ft. Jeff Nippard) failed at step pick: aiplatform.googleapis.com was reached but didn't answer within 600 s (the AI was too slow, not your internet).
+2026-10-16 06:07:42,427 INFO job I Tested The Most Dangerous Exercises (ft. Jeff Nippard): pick
+2026-10-16 06:17:42,629 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 1 of 2): The read operation timed out
+2026-10-16 06:27:52,828 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 2 of 2): The read operation timed out
+2026-10-16 06:27:52,828 WARNING Google Cloud gemini-3.8-flash didn't answer (aiplatform.googleapis.com was reached but didn't answer within 600 s (the AI was too slow, not your internet).); trying gemini-3.5-flash
+2026-10-16 06:37:53,040 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> ReadTimeout after 600.2s (try 1 of 2): The read operation timed out
+2026-10-16 06:44:25,435 INFO Using hardware video encoder: h264_mf
+2026-10-16 06:44:57,348 INFO job Peptides Are Insane: render
+2026-10-16 06:45:28,857 INFO Using hardware video encoder: h264_mf
+2026-10-16 06:48:26,724 INFO job Peptides Are Insane: render
+2026-10-16 06:48:41,108 INFO Using hardware video encoder: h264_mf
+2026-10-16 06:52:50,557 INFO job Peptides Are Insane: render
+2026-10-16 06:53:19,153 INFO Using hardware video encoder: h264_nvenc
+2026-10-16 07:03:34,367 INFO job I Tried Worlds Most SHREDDED Kid's Bulking Diet: download
+2026-10-16 07:05:10,713 INFO job I Tried Worlds Most SHREDDED Kid's Bulking Diet: transcribe
+2026-10-16 07:05:30,602 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.5s
+2026-10-16 07:05:30,761 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.6s
+2026-10-16 07:05:30,761 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.6s
+2026-10-16 07:05:30,763 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.6s
+2026-10-16 07:05:31,478 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.3s
+2026-10-16 07:05:31,997 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-16 07:05:37,385 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.4s
+2026-10-16 07:05:37,927 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.2s
+2026-10-16 07:05:38,017 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.2s
+2026-10-16 07:05:38,491 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.7s
+2026-10-16 07:05:39,045 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.6s
+2026-10-16 07:05:39,263 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.7s
+2026-10-16 07:05:44,838 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.5s
+2026-10-16 07:05:46,074 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-16 07:05:46,291 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.8s
+2026-10-16 07:05:46,624 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.6s
+2026-10-16 07:05:47,521 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.5s
+2026-10-16 07:05:48,197 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.9s
+2026-10-16 07:05:50,843 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 2.6s
+2026-10-16 07:05:52,839 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.0s
+2026-10-16 07:05:53,994 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.9s
+2026-10-16 07:05:55,088 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.8s
+2026-10-16 07:05:55,317 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.7s
+2026-10-16 07:05:55,878 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.3s
+2026-10-16 07:05:55,923 INFO job I Tried Worlds Most SHREDDED Kid's Bulking Diet: pick
+2026-10-16 07:07:59,086 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 123.2s
+2026-10-16 07:10:46,179 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 167.1s
+2026-10-16 07:10:46,182 INFO job I Tried Worlds Most SHREDDED Kid's Bulking Diet: voice
+2026-10-16 07:10:49,003 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-16 07:10:49,019 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-16 07:10:49,020 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-16 07:10:49,022 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-16 07:10:49,046 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.9s
+2026-10-16 07:10:49,048 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.9s
+2026-10-16 07:10:49,136 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.9s
+2026-10-16 07:10:49,310 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 3.1s
+2026-10-16 07:10:49,313 INFO job I Tried Worlds Most SHREDDED Kid's Bulking Diet: render
+2026-10-16 07:11:32,696 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 7.8s
+2026-10-16 07:11:33,202 INFO Using hardware video encoder: h264_nvenc
+2026-10-16 07:11:42,137 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 7.6s
+2026-10-16 07:12:12,029 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 24.4s
+2026-10-16 07:12:27,248 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 20.7s
+2026-10-16 07:12:51,534 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 3.9s
+2026-10-16 07:12:52,515 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 4.2s
+2026-10-16 07:12:56,200 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.1s (try 1 of 2): The read operation timed out
+2026-10-16 07:13:11,194 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 5.0s
+2026-10-16 07:13:28,941 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 20.0s
+2026-10-16 07:13:40,868 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 21.1s
+2026-10-16 07:13:47,656 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 21.2s
+2026-10-16 07:14:00,218 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 9.0s
+2026-10-16 07:14:19,084 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 4.8s
+2026-10-16 07:14:20,108 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 3.2s
+2026-10-16 07:14:43,288 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 429 in 0.5s (try 1 of 2): {
+  "error": {
+    "code": 429,
+    "message": "Resource has been exhausted (e.g. check quota).",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
+
+2026-10-16 07:14:43,288 WARNING Google Cloud gemini-3-pro-image answered 429; trying gemini-nano-banana-2.1
+2026-10-16 07:14:45,126 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 429 in 0.6s (try 1 of 2): {
+  "error": {
+    "code": 429,
+    "message": "Resource has been exhausted (e.g. check quota).",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
+
+2026-10-16 07:14:45,126 WARNING Google Cloud gemini-3-pro-image answered 429; trying gemini-nano-banana-2.1
+2026-10-16 07:14:49,210 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 22.6s
+2026-10-16 07:14:54,705 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-nano-banana-2.1:generateContent -> 404 in 11.4s (try 1 of 2): {
+  "error": {
+    "code": 404,
+    "message": "Publisher model `projects/166061125098/locations/us-central1/publishers/google/models/gemini-nano-banana-2.1` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-10-16 07:14:56,498 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-nano-banana-2.1:generateContent -> 404 in 11.4s (try 1 of 2): {
+  "error": {
+    "code": 404,
+    "message": "Publisher model `projects/166061125098/locations/us-central1/publishers/google/models/gemini-nano-banana-2.1` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-10-16 07:49:42,398 INFO job 7 Minutes of The Cutest Baby Animals You've Ever Seen - Nat Geo: download
+2026-10-16 07:50:51,824 INFO job 7 Minutes of The Cutest Baby Animals You've Ever Seen - Nat Geo: transcribe
+2026-10-16 07:50:56,818 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 2.7s
+2026-10-16 07:50:56,821 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 2.7s
+2026-10-16 07:50:56,839 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 2.7s
+2026-10-16 07:50:59,241 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 2.4s
+2026-10-16 07:51:08,819 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 14.7s
+2026-10-16 07:51:10,564 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 16.5s
+2026-10-16 07:51:11,219 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 17.1s
+2026-10-16 07:51:12,673 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 15.9s
+2026-10-16 07:51:12,678 INFO job 7 Minutes of The Cutest Baby Animals You've Ever Seen - Nat Geo: pick
+2026-10-16 07:52:09,004 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 56.3s
+2026-10-16 07:52:37,941 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 28.9s
+2026-10-16 07:52:37,942 INFO job 7 Minutes of The Cutest Baby Animals You've Ever Seen - Nat Geo: voice
+2026-10-16 07:52:40,228 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.3s
+2026-10-16 07:52:40,230 INFO job 7 Minutes of The Cutest Baby Animals You've Ever Seen - Nat Geo: render
+2026-10-16 07:52:56,840 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 7.9s
+2026-10-16 07:52:59,375 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 8.7s
+2026-10-16 07:53:26,733 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 22.8s
+2026-10-16 07:53:33,307 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 20.1s
+2026-10-16 08:05:49,447 INFO job Peptides Are Insane: render
+2026-10-16 08:06:17,256 INFO Using hardware video encoder: h264_nvenc
+2026-10-16 16:20:32,307 INFO job getting bigger AND stronger - back, biceps, abs workout: download
+2026-10-16 16:21:21,911 INFO job getting bigger AND stronger - back, biceps, abs workout: transcribe
+2026-10-16 16:21:32,990 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 2.8s
+2026-10-16 16:21:33,488 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 3.3s
+2026-10-16 16:21:34,005 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 3.8s
+2026-10-16 16:21:35,027 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 4.8s
+2026-10-16 16:21:36,227 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 3.2s
+2026-10-16 16:21:36,643 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.4s
+2026-10-16 16:21:36,781 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.6s
+2026-10-16 16:21:38,958 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.5s
+2026-10-16 16:21:39,488 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.5s
+2026-10-16 16:21:39,808 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 3.6s
+2026-10-16 16:21:41,619 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.6s
+2026-10-16 16:21:42,023 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.4s
+2026-10-16 16:21:42,040 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.3s
+2026-10-16 16:21:43,870 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 4.9s
+2026-10-16 16:21:45,150 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.3s
+2026-10-16 16:21:45,292 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 5.8s
+2026-10-16 16:21:45,293 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 3.7s
+2026-10-16 16:21:45,304 INFO job getting bigger AND stronger - back, biceps, abs workout: pick
+2026-10-16 16:24:44,513 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 179.2s
+2026-10-16 16:28:49,469 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 245.0s
+2026-10-16 16:28:49,474 INFO job getting bigger AND stronger - back, biceps, abs workout: voice
+2026-10-16 16:28:51,652 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.2s
+2026-10-16 16:28:51,874 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.4s
+2026-10-16 16:28:51,893 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.4s
+2026-10-16 16:28:51,990 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.5s
+2026-10-16 16:28:52,033 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.6s
+2026-10-16 16:28:52,242 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-16 16:28:52,254 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash-tts:generateContent -> 200 in 2.8s
+2026-10-16 16:28:52,257 INFO job getting bigger AND stronger - back, biceps, abs workout: render
+2026-10-16 16:29:54,602 INFO Using hardware video encoder: h264_nvenc
+2026-10-16 16:30:06,983 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 17.9s
+2026-10-16 16:30:10,150 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 11.0s
+2026-10-16 16:31:06,485 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 23.5s
+2026-10-16 16:31:14,561 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 35.9s
+2026-10-16 16:31:33,110 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 39.9s
+2026-10-16 16:31:55,740 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 23.5s
+2026-10-16 16:32:25,222 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 429 in 0.7s (try 1 of 2): {
+  "error": {
+    "code": 429,
+    "message": "Resource has been exhausted (e.g. check quota).",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
+
+2026-10-16 16:32:25,223 WARNING Google Cloud gemini-3-pro-image answered 429; trying gemini-nano-banana-2.1
+2026-10-16 16:32:36,683 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-nano-banana-2.1:generateContent -> 404 in 11.5s (try 1 of 2): {
+  "error": {
+    "code": 404,
+    "message": "Publisher model `projects/166061125098/locations/us-central1/publishers/google/models/gemini-nano-banana-2.1` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-10-16 16:32:39,043 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 25.8s
+2026-10-16 16:32:39,521 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 429 in 1.1s (try 1 of 2): {
+  "error": {
+    "code": 429,
+    "message": "Resource has been exhausted (e.g. check quota).",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
+
+2026-10-16 16:32:39,522 WARNING Google Cloud gemini-3-pro-image answered 429; trying gemini-nano-banana-2.1
+2026-10-16 16:32:50,974 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-nano-banana-2.1:generateContent -> 404 in 11.5s (try 1 of 2): {
+  "error": {
+    "code": 404,
+    "message": "Publisher model `projects/166061125098/locations/us-central1/publishers/google/models/gemini-nano-banana-2.1` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-10-16 16:34:14,113 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 40.7s
+2026-10-16 16:34:14,222 INFO job Training With Worlds Strongest Teenagers: download
+2026-10-16 16:36:00,425 INFO job Training With Worlds Strongest Teenagers: transcribe
+2026-10-16 16:36:18,611 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.6s
+2026-10-16 16:36:18,762 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.7s
+2026-10-16 16:36:19,102 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.1s
+2026-10-16 16:36:20,035 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.0s
+2026-10-16 16:36:20,764 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.7s
+2026-10-16 16:36:21,378 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.3s
+2026-10-16 16:36:26,131 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.4s
+2026-10-16 16:36:26,283 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 6.2s
+2026-10-16 16:36:26,450 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.8s
+2026-10-16 16:36:27,011 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.9s
+2026-10-16 16:36:28,861 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-16 16:36:29,433 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-16 16:36:33,094 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.0s
+2026-10-16 16:36:33,391 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 4.5s
+2026-10-16 16:36:33,783 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.3s
+2026-10-16 16:36:34,193 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.9s
+2026-10-16 16:36:34,805 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.8s
+2026-10-16 16:36:36,464 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.0s
+2026-10-16 16:36:41,440 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.2s
+2026-10-16 16:36:41,641 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.5s
+2026-10-16 16:36:42,096 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.7s
+2026-10-16 16:36:42,140 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.4s
+2026-10-16 16:36:43,408 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 1.8s
+2026-10-16 16:36:44,974 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.5s
+2026-10-16 16:36:45,024 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.2s
+2026-10-16 16:36:48,937 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.5s
+2026-10-16 16:36:48,961 INFO job Training With Worlds Strongest Teenagers: pick
+2026-10-16 16:38:20,852 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 91.9s
+2026-10-16 16:38:53,797 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 32.9s
+2026-10-16 16:38:53,800 INFO job Training With Worlds Strongest Teenagers: render
+2026-10-16 16:39:28,752 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 21.1s
+2026-10-16 16:39:39,870 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 5.7s
+2026-10-16 16:39:41,007 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 26.8s
+2026-10-16 16:39:52,147 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 40.2s
+2026-10-16 16:40:12,510 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 20.6s
+2026-10-16 16:40:29,355 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 18.1s
+2026-10-16 16:40:42,554 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 22.7s
+2026-10-16 16:40:47,389 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 429 in 0.8s (try 1 of 2): {
+  "error": {
+    "code": 429,
+    "message": "Resource has been exhausted (e.g. check quota).",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}
+
+2026-10-16 16:40:47,390 WARNING Google Cloud gemini-3-pro-image answered 429; trying gemini-nano-banana-2.1
+2026-10-16 16:40:54,131 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 24.4s
+2026-10-16 16:40:58,775 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-nano-banana-2.1:generateContent -> 404 in 11.4s (try 1 of 2): {
+  "error": {
+    "code": 404,
+    "message": "Publisher model `projects/166061125098/locations/us-central1/publishers/google/models/gemini-nano-banana-2.1` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations.",
+    "status": "NOT_FOUND"
+  }
+}
+
+2026-10-16 16:41:14,883 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 23.8s
+2026-10-16 16:41:30,164 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 10.0s
+2026-10-16 16:41:31,398 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 21.7s
+2026-10-16 16:41:51,845 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 21.6s
+2026-10-16 16:42:16,032 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 25.0s
+2026-10-16 16:42:25,208 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 20.2s
+2026-10-16 16:42:36,067 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 22.6s
+2026-10-16 16:43:07,568 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 19.7s
+2026-10-16 16:43:23,029 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 32.6s
+2026-10-16 16:43:31,460 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 30.7s
+2026-10-16 16:43:45,218 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 20.1s
+2026-10-16 16:45:11,725 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.5s (try 1 of 2): The read operation timed out
+2026-10-16 16:45:50,984 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 29.3s
+2026-10-16 16:46:39,102 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 29.1s
+2026-10-17 15:54:02,325 INFO job How Muslims Survive in China's Land of Pork!: download
+2026-10-17 15:56:01,179 INFO job How Muslims Survive in China's Land of Pork!: transcribe
+2026-10-17 15:56:29,568 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-17 15:56:29,784 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.3s
+2026-10-17 15:56:30,232 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.7s
+2026-10-17 15:56:30,265 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.8s
+2026-10-17 15:56:31,058 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.6s
+2026-10-17 15:56:39,190 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-17 15:56:39,455 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.9s
+2026-10-17 15:56:41,055 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 19.6s
+2026-10-17 15:56:47,010 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 7.8s
+2026-10-17 15:56:49,179 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.1s
+2026-10-17 15:56:49,923 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.5s
+2026-10-17 15:56:52,665 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 22.9s
+2026-10-17 15:56:55,185 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 24.9s
+2026-10-17 15:56:56,927 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.9s
+2026-10-17 15:56:59,449 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.3s
+2026-10-17 15:56:59,796 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.9s
+2026-10-17 15:57:04,020 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 4.6s
+2026-10-17 15:57:04,466 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 11.8s
+2026-10-17 15:57:04,813 WARNING POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> ConnectError after 34.6s (try 1 of 4): [WinError 10054] An existing connection was forcibly closed by the remote host
+2026-10-17 15:57:05,405 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 10.2s
+2026-10-17 15:57:05,625 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 8.7s
+2026-10-17 15:57:23,782 INFO POST https://us-speech.googleapis.com/v2/projects/yachty-octagon-dz9rc/locations/us/recognizers/_:recognize -> 200 in 9.0s
+2026-10-17 15:57:23,826 INFO job How Muslims Survive in China's Land of Pork!: pick
+2026-10-17 15:58:52,048 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 88.2s
+2026-10-17 15:59:23,186 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 31.1s
+2026-10-17 15:59:23,188 INFO job How Muslims Survive in China's Land of Pork!: render
+2026-10-17 15:59:39,427 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 8.5s
+2026-10-17 15:59:58,072 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 8.0s
+2026-10-17 16:00:09,419 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 6.5s
+2026-10-17 16:00:16,953 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 21.8s
+2026-10-17 16:00:21,825 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 6.0s
+2026-10-17 16:00:39,042 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 5.4s
+2026-10-17 16:01:22,716 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.2s (try 1 of 2): The read operation timed out
+2026-10-17 16:01:41,771 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 28.0s
+2026-10-17 16:01:51,120 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 18.0s
+2026-10-17 16:01:59,008 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 36.2s
+2026-10-17 16:02:00,319 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 4.8s
+2026-10-17 16:02:08,674 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 5.9s
+2026-10-17 16:02:19,681 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 8.1s
+2026-10-17 16:02:58,319 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 30.4s
+2026-10-17 16:03:37,083 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.4s (try 1 of 2): The read operation timed out
+2026-10-17 16:03:50,806 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 3.7s
+2026-10-17 16:04:01,983 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.4s (try 1 of 2): The read operation timed out
+2026-10-17 16:04:10,817 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 8.2s
+2026-10-17 16:04:41,682 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> 200 in 29.7s
+2026-10-17 16:05:37,680 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3-pro-image:generateContent -> 200 in 31.7s
+2026-10-17 16:05:46,392 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.4s (try 1 of 2): The read operation timed out
+2026-10-17 16:07:27,009 WARNING POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.8-flash:streamGenerateContent -> ReadTimeout after 90.6s (try 2 of 2): The read operation timed out
+2026-10-17 16:07:27,009 WARNING Google Cloud gemini-3.8-flash didn't answer (aiplatform.googleapis.com was reached but didn't answer within 90 s (the AI was too slow, not your internet).); trying gemini-3.5-flash
+2026-10-17 16:07:31,631 INFO POST https://aiplatform.googleapis.com/v1/publishers/google/models/gemini-3.5-flash:streamGenerateContent -> 200 in 4.6s
+2026-10-17 16:07:31,898 WARNING Hardware video encoder failed; falling back to libx264 CPU encoder
+2026-10-17 16:07:31,929 ERROR job How Muslims Survive in China's Land of Pork!: clip 5 failed
+Traceback (most recent call last):
+  File "D:\projects\tiny clipper\clipper.py", line 1734, in render_edit
+    run_ffmpeg([*args, "-filter_complex", ";".join(graph), *maps,
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                *enc_args,
+                ^^^^^^^^^^
+                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out_file],
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               cwd=out_dir)
+               ^^^^^^^^^^^^
+  File "D:\projects\tiny clipper\clipper.py", line 156, in run_ffmpeg
+    raise ClipperError(f"Video processing failed: {last[:300]}")
+clipper.ClipperError: Video processing failed: Error parsing global options: Invalid argument
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\projects\tiny clipper\server.py", line 505, in run_job
+    clip = done.result()
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py", line 447, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\_base.py", line 396, in __get_result
+    raise self._exception
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Users\badrg\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "D:\projects\tiny clipper\server.py", line 489, in make_clip
+    clip["file"] = clipper.render_clip(source_path, clip, words, folder, i, job["layout"],
+                   ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                       captions_on, voices.get(i), plan)
+                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\projects\tiny clipper\clipper.py", line 1833, in render_clip
+    return render_edit(src, clip_edl(clip, layout, captions), words, out_dir, f"clip_{index:02d}",
+                       clip.get("intro"), voice, plan, out_name=out_name)
+  File "D:\projects\tiny clipper\clipper.py", line 1742, in render_edit
+    run_ffmpeg([*args, "-filter_complex", ";".join(graph), *maps,
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "21", "-pix_fmt", "yuv420p",
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out_file],
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+               cwd=out_dir)
+               ^^^^^^^^^^^^
+  File "D:\projects\tiny clipper\clipper.py", line 156, in run_ffmpeg
+    raise ClipperError(f"Video processing failed: {last[:300]}")
+clipper.ClipperError: Video processing failed: Error parsing global options: Invalid argument

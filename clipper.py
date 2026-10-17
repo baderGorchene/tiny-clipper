@@ -14,7 +14,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
+import uuid
 
 import httpx
 
@@ -48,6 +50,14 @@ VERTEX_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"]  # 3.5: when 3.8 hangs
 VERTEX_VISION_MODELS = ["gemini-3.8-flash", "gemini-3.5-flash"]
 TTS_MODELS = ["gemini-3.8-flash-tts", "gemini-3.8-flash-lite-tts"]
 TTS_VOICE = os.environ.get("TTS_VOICE", "Puck")  # upbeat; 30 voices, e.g. Fenrir (excitable), Charon (informative)
+CLOUD_TTS_VOICE = os.environ.get("CLOUD_TTS_VOICE", "en-US-Chirp3-HD-Charon")  # Cloud Text-to-Speech, via the sign-in
+# Free, no key: Microsoft Edge's online neural voices. Multilingual voices also read other languages.
+EDGE_VOICE = os.environ.get("EDGE_TTS_VOICE", "en-US-AndrewMultilingualNeural")
+EDGE_RATE = "+8%"
+# Which providers the pipeline may call (server.use_keys puts it in keys["mode"]):
+# hybrid_auto = everything, Cloud credit first; free_local = free tiers only;
+# gcp_native = Google Cloud only, no fallbacks elsewhere.
+PROVIDER_MODES = ("hybrid_auto", "free_local", "gcp_native")
 SKIP_TO_NEXT_MODEL = (404, 413, 429, 500, 503)  # gone, too big for its free tier, quota, overloaded
 
 CHUNK_SECONDS = 1200          # 20 min of 32 kbps opus is ~5 MB, under Groq's 25 MB free cap
@@ -122,6 +132,7 @@ def video_encoder_args(force_software=False):
     if _encoder_args is not None:
         return list(_encoder_args)
 
+    # Probe at 256x256: NVENC refuses frames under ~145 px wide, so 64x64 always failed it
     candidates = [
         ("h264_nvenc", ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "22", "-pix_fmt", "yuv420p"]),
         ("h264_qsv", ["-c:v", "h264_qsv", "-global_quality", "23", "-pix_fmt", "yuv420p"]),
@@ -131,7 +142,7 @@ def video_encoder_args(force_software=False):
     ]
     for name, args in candidates:
         try:
-            cmd = [ffmpeg_exe(), "-hide_banner", "-f", "lavfi", "-i", "color=s=64x64:d=0.1", *args, "-f", "null", "-"]
+            cmd = [ffmpeg_exe(), "-hide_banner", "-f", "lavfi", "-i", "color=s=256x256:d=0.1", *args, "-f", "null", "-"]
             proc = subprocess.run(cmd, capture_output=True)
             if proc.returncode == 0:
                 log.info("Using hardware video encoder: %s", name)
@@ -473,7 +484,7 @@ def transcribe(media_path, keys, progress):
     list means Groq keys)."""
     keys = keys if isinstance(keys, dict) else {"groq": keys}
     groq = key_list(keys.get("groq"))
-    signin = google_signin() if STT_ENGINE != "groq" else None
+    signin = google_signin() if STT_ENGINE != "groq" and keys.get("mode") != "free_local" else None
     if signin:  # Google Cloud Speech-to-Text (Chirp 3), paid from the Cloud project
         try:
             words, segments = chirp_transcribe(media_path, signin, progress)
@@ -541,6 +552,8 @@ Choosing subjects:
 - Pick the subjects the speaker develops in depth and explains clearly: a story with a turn, an argument with its reasons, a lesson with its example, a strong opinion with its why.
 - Prefer stretches where the speaker is fluent, confident and on topic. Skip rambling, stuttering, small talk, housekeeping ("subscribe", "next question") and one-liners that would need padding to fill time.
 - Every clip has an arc: hook (why care), setup (the context a newcomer needs), development (the substance: details, reasons, example), payoff (the answer, the punchline, the conclusion).
+- Favour what people save (a framework, a checklist, a tool, exact numbers or steps they'll want later) and share (an opinion viewers hold, a skill to pass on, an emotional or "this is literally us" punchline). A mild, fair debate (two polarizing choices, a contested opinion) is a plus: it gets comments.
+- Lists escalate: when the speaker gives several points, the strongest, most surprising one plays last.
 
 How to build each clip:
 1. Decide its subject and message first, in one sentence ("message").
@@ -549,7 +562,7 @@ How to build each clip:
    - Otherwise join up to {max_parts} parts from anywhere in the video: leave out tangents, filler, repetition and side stories, and keep the context, the key point and the payoff.
    - Parts play in the order you list them. Keep the video's order unless a later sentence makes a much stronger opening and the clip still makes sense that way.
    - Every part is whole sentences. Never keep a sentence that points at something you cut out ("as I said", "that one", "he" when we don't know who).
-3. Check it: the first sentence works as an opening (a hook, a question or a bold claim, never "And...", "So...", "But..." leaning on missing context) and the last sentence lands the payoff (the answer, the punchline, the conclusion).
+3. Check it: viewers decide to stay within 2 seconds, so the first sentence is the hook. It opens a loop or makes a counter-intuitive claim (negative framing: "Stop making this mistake..."; a curiosity gap: "This 3-dollar tool replaced..."; stakes: "I spent 48 hours testing..."), and it names the clip's subject in words people would search for. Never open on throat-clearing ("Hey guys", "welcome back", "so today") or on "And...", "So...", "But..." leaning on missing context. The last sentence lands the payoff (the answer, the punchline, the conclusion); when one also leads naturally back into the opening line, end on it, so the clip loops.
 
 All parts of a clip together last between {lo} and {hi} seconds (judge it from the start times); never under {lo}. If a subject can't fill {lo} seconds with real substance, pick a different subject instead of padding. Two clips never use the same sentence.
 
@@ -557,9 +570,14 @@ Each clip also gets a cold open, a teaser played before it starts:
 - "teaser_id": the id of the single most gripping sentence in the clip's parts (a reaction, a punchline, a shocking line), not its first sentence.
 - "voiceover": what a narrator says over that teaser, 6 to 12 words, building curiosity without spoiling the ending, true to what actually happens. Examples: "Watch how this man turned 100 dollars into a business", "You won't believe what this dog does next".
 
+For search and the post itself:
+- "keywords": 2 to 5 single words actually spoken in the clip that carry its meaning (the subject, a number, the twist); the captions colour them.
+- "caption": the post text, 1 or 2 sentences built around what people would search to find this, ending with a short question that invites an opinion in the comments.
+- "hashtags": 3 to 5 targeted niche hashtags, no generic ones like #fyp or #viral.
+
 Answer with JSON only, exactly in this shape:
-{{"clips": [{{"message": "the one point this clip gets across", "parts": [[12, 15], [31, 33]], "title": "catchy title, max 8 words", "hook": "one sentence on why viewers will keep watching", "score": 87, "teaser_id": 32, "voiceover": "Watch how this man ..."}}]}}
-"score" is the viral potential from 0 to 100. Write "message", "title", "hook" and "voiceover" in the transcript's language.
+{{"clips": [{{"message": "the one point this clip gets across", "parts": [[12, 15], [31, 33]], "title": "catchy title, max 8 words", "hook": "one sentence on why viewers will keep watching", "score": 87, "teaser_id": 32, "voiceover": "Watch how this man ...", "keywords": ["100", "business"], "caption": "How one man turned 100 dollars into a business. Would you have tried it?", "hashtags": ["#sidehustle", "#smallbusiness", "#entrepreneurtips"]}}]}}
+"score" is the viral potential from 0 to 100: the hook's pull in the first 2 seconds, whether viewers stay to the payoff, and how likely they are to save or share it. Write every text field in the transcript's language.
 
 TRANSCRIPT:
 {transcript}"""
@@ -570,15 +588,16 @@ Watch each draft as a first-time viewer who never saw the full video. Fix a draf
 - its message doesn't come across completely (setup missing, payoff missing, cut off mid-thought),
 - a sentence points at something that was cut out,
 - a part is filler, a tangent or a repeat,
-- the opening leans on missing context, or the ending trails into another topic,
+- the opening leans on missing context or warms up instead of hooking (throat-clearing, greetings, a slow lead-in), or the ending trails into another topic,
+- a list puts its strongest point before weaker ones,
 - it is shorter than {lo} seconds: extend it with the surrounding sentences that develop the same subject (more context, the example, the reasons), never with filler,
 - its subject is thin (a single remark stretched out): replace it with a subject the speaker develops properly.
 Fix it by changing its parts: add, remove, extend or shorten runs of whole sentences, from anywhere in the video. Leave drafts that already work exactly as they are.
 
 Same rules as the drafts: at most {max_parts} parts per clip, {lo} to {hi} seconds in total, parts play in the listed order, two clips never use the same sentence, "teaser_id" is a sentence in the clip's parts but not its first.
 
-Answer with JSON only: every clip, fixed or not, in the drafts' shape:
-{{"clips": [{{"message": "...", "parts": [[12, 15], [31, 33]], "title": "...", "hook": "...", "score": 87, "teaser_id": 32, "voiceover": "..."}}]}}
+Answer with JSON only: every clip, fixed or not, in the drafts' shape (keep or improve each one's keywords, caption and hashtags):
+{{"clips": [{{"message": "...", "parts": [[12, 15], [31, 33]], "title": "...", "hook": "...", "score": 87, "teaser_id": 32, "voiceover": "...", "keywords": ["..."], "caption": "...", "hashtags": ["#..."]}}]}}
 
 DRAFTS:
 {drafts}
@@ -754,6 +773,57 @@ def gemini_speak(text, keys, path):
     return path
 
 
+def cloud_speak(text, signin, path):
+    """The hook voice from Google Cloud Text-to-Speech (sign-in, no API key). Returns the MP3 path."""
+    import base64
+    token, project = signin
+    resp = post("https://texttospeech.googleapis.com/v1/text:synthesize", retries=2, timeout=60,
+                headers={"Authorization": f"Bearer {token}", "x-goog-user-project": project},
+                json={"input": {"text": text}, "audioConfig": {"audioEncoding": "MP3"},
+                      "voice": {"languageCode": "-".join(CLOUD_TTS_VOICE.split("-")[:2]), "name": CLOUD_TTS_VOICE}})
+    if resp.status_code != 200:
+        raise api_error("Google Cloud voice", resp)
+    with open(path, "wb") as f:
+        f.write(base64.b64decode(resp.json()["audioContent"]))
+    return path
+
+
+def edge_speak(text, path):
+    """The hook voice from edge-tts: free, no key, no browser. Returns the MP3 path."""
+    import edge_tts
+    try:
+        edge_tts.Communicate(text, EDGE_VOICE, rate=EDGE_RATE).save_sync(path)
+    except Exception as e:  # aiohttp/websocket errors, NoAudioReceived...
+        raise ClipperError(f"edge-tts failed: {e}")
+    if not os.path.exists(path) or os.path.getsize(path) == 0:
+        raise ClipperError("edge-tts sent back no audio.")
+    return path
+
+
+def speak(text, keys, base):
+    """A hook voice made here, never in the browser; tries in order, as keys["mode"] allows:
+    Gemini TTS (Cloud credit, then free key), Cloud Text-to-Speech (sign-in), edge-tts (free).
+    base: the path without extension. Returns the audio path; raises ClipperError if all fail."""
+    mode, errors = keys.get("mode", "hybrid_auto"), []
+    if keys.get("gemini") or keys.get("vertex"):
+        try:
+            return gemini_speak(text, keys, base + ".wav")
+        except (ClipperError, httpx.HTTPError) as e:
+            errors.append(f"Gemini: {e}")
+    signin = google_signin() if mode != "free_local" else None
+    if signin:
+        try:
+            return cloud_speak(text, signin, base + ".mp3")
+        except (ClipperError, httpx.HTTPError, KeyError, ValueError) as e:
+            errors.append(f"Cloud TTS: {e}")
+    if mode != "gcp_native":
+        try:
+            return edge_speak(text, base + ".mp3")
+        except ClipperError as e:
+            errors.append(str(e))
+    raise ClipperError("; ".join(errors) or "No voice service is available in this mode.")
+
+
 def ask_groq(prompt, keys):
     _, resp = try_models("Groq", GROQ_LLM_MODELS, keys, lambda model, key: post(
         f"{GROQ_BASE}/chat/completions", retries=1, timeout=LLM_TIMEOUT, wait_on_429=False,
@@ -836,7 +906,13 @@ def clean_clips(raw, sentences, duration, n, floor=KEEP_MIN):
                     "title": str(c.get("title") or "Untitled clip").strip()[:100],
                     "hook": str(c.get("hook") or "").strip()[:300], "score": score(c),
                     "intro": clean_teaser(c, sentences, runs),
-                    "voiceover": str(c.get("voiceover") or "").strip()[:160]})
+                    "voiceover": str(c.get("voiceover") or "").strip()[:160],
+                    "keywords": [str(k).strip()[:40] for k in (c.get("keywords") or []) if str(k).strip()][:5]
+                    if isinstance(c.get("keywords"), list) else [],
+                    "caption": str(c.get("caption") or "").strip()[:500],
+                    "hashtags": [h if h.startswith("#") else "#" + h for h in
+                                 (re.sub(r"[^\w#]", "", str(x)) for x in (c.get("hashtags") or []))
+                                 if h.strip("#")][:5] if isinstance(c.get("hashtags"), list) else []})
         if len(out) == n:
             break
     return out
@@ -856,6 +932,77 @@ def clean_teaser(c, sentences, runs):
     if te - ts < 1.0:
         return None
     return {"start": round(max(ts - 0.1, 0.0), 2), "end": round(te + 0.2, 2)}
+
+
+# --- review before cutting ----------------------------------------------------
+# Dropped clips stay in the list, marked "dropped": a clip's place names its files
+# (voice_NN, clip_NN), so it must never shift.
+
+REVIEW_KEEP_SCORE = 85  # what an unattended review keeps
+
+
+def apply_review(picked, edits, sentences, duration):
+    """The picks after a person's review. edits: [{"i": 1-based place, "keep",
+    "title", "voiceover" (the hook line), "ids": [[first, last], ...] sentence runs
+    in play order}]; a clip without an edit stays as picked. Raises ClipperError
+    when an edit leaves a clip too short or long, or two clips share a sentence."""
+    by_i = {}
+    for e in edits if isinstance(edits, list) else []:
+        try:
+            by_i[int(e["i"])] = e
+        except (KeyError, TypeError, ValueError):
+            continue
+    out, used = [], {}
+    for i, c in enumerate(picked, 1):
+        c, e = dict(c), by_i.get(i, {})
+        if c.get("dropped") or not e.get("keep", True):
+            out.append(dict(c, dropped=True))
+            continue
+        if str(e.get("title") or "").strip():
+            c["title"] = str(e["title"]).strip()[:100]
+        if "voiceover" in e:
+            c["voiceover"] = str(e["voiceover"] or "").strip()[:160]
+        runs = [tuple(r) for r in c.get("ids") or []]
+        if e.get("ids") is not None and sentences and not c.get("visual"):
+            if len(e["ids"]) > MAX_PARTS:
+                raise ClipperError(f"“{c['title']}” has {len(e['ids'])} parts; {MAX_PARTS} at most.")
+            new = clip_runs({"parts": e["ids"]}, len(sentences))
+            if not new:
+                raise ClipperError(f"“{c['title']}” has no sentences left. Drop it instead.")
+            if new != runs:
+                parts = [dict(zip(("s", "e"), run_span(sentences, a, b, duration, k == len(new) - 1)))
+                         for k, (a, b) in enumerate(new)]
+                length = sum(x["e"] - x["s"] for x in parts)
+                if not KEEP_MIN <= length <= KEEP_MAX:
+                    raise ClipperError(f"“{c['title']}” would be {length:.0f} s: keep it between "
+                                       f"{KEEP_MIN} and {KEEP_MAX} s.")
+                teaser = None
+                if c.get("intro"):  # the same cold-open sentence if it's still in, else the payoff
+                    t = max((k for k, s in enumerate(sentences) if s["s"] <= c["intro"]["start"] + 0.15), default=None)
+                    teaser = (clean_teaser({"teaser_id": t}, sentences, new)
+                              or clean_teaser({"teaser_id": new[-1][1]}, sentences, new))
+                c.update(parts=parts, ids=[list(r) for r in new], intro=teaser,
+                         start=min(x["s"] for x in parts), end=max(x["e"] for x in parts))
+                c.pop("shots", None)
+                runs = new
+        for a, b in runs:
+            for k in range(a, b + 1):
+                if k in used:
+                    raise ClipperError(f"“{c['title']}” and “{used[k]}” share a sentence: "
+                                       f"two clips would show the same moment.")
+                used[k] = c["title"]
+        out.append(dict(c, dropped=False))
+    if all(c["dropped"] for c in out):
+        raise ClipperError("Keep at least one clip.")
+    return out
+
+
+def auto_review(picked, min_score=REVIEW_KEEP_SCORE):
+    """An unattended review: keep the clips scoring min_score or more (the best one if none does)."""
+    live = [c for c in picked if not c.get("dropped")]
+    keep = [c for c in live if c.get("score", 0) >= min_score] or \
+           sorted(live, key=lambda c: c.get("score", 0), reverse=True)[:1]
+    return [dict(c, dropped=not any(c is k for k in keep)) for c in picked]
 
 
 def replace_words(words, a, b, text):
@@ -896,7 +1043,8 @@ def describe_drafts(clips, sentences):
                        if c["intro"] and sentences[i]["s"] <= c["intro"]["start"] + 0.2 <= sentences[i]["e"]), None)
         lines.append(f"{k}. message: {c['message']} | parts: {json.dumps(c['ids'])} ({secs:.0f} s) | "
                      f"title: {c['title']} | hook: {c['hook']} | score: {c['score']} | "
-                     f"teaser_id: {teaser} | voiceover: {c['voiceover']}")
+                     f"teaser_id: {teaser} | voiceover: {c['voiceover']} | keywords: {json.dumps(c['keywords'])} | "
+                     f"caption: {c['caption']} | hashtags: {' '.join(c['hashtags'])}")
         for a, b in c["ids"]:
             lines.append(f"   [{a}-{b}] " + " ".join(sentences[i]["text"] for i in range(a, b + 1)))
     return "\n".join(lines)
@@ -1166,7 +1314,72 @@ High contrast, clean composition, room for the text, no watermarks, no borders, 
 What the video is about: {message}"""
 
 
+# Free cover: title in the lower third (faces sit high), big and bold, white on a heavy black outline.
+THUMB_STYLE = ("Style: Thumb,Arial,{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,"
+               "-1,0,0,0,100,100,0,0,1,10,4,2,70,70,420,1\n")
+
+
+def best_frame(frames):
+    """(BGR image, face x 0-1 or None) of the sharpest frame; a face counts double."""
+    import cv2
+    import numpy as np
+    best = None
+    for jpg in frames:
+        img = cv2.imdecode(np.frombuffer(jpg, np.uint8), cv2.IMREAD_COLOR)
+        if img is None:
+            continue
+        sharp = cv2.Laplacian(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), cv2.CV_64F).var()
+        detector = face_detector(img.shape[1], img.shape[0])
+        x = main_face(detector.detect(img)[1], img.shape[1], None) if detector is not None else None
+        score = sharp * (2 if x is not None else 1)
+        if best is None or score > best[0]:
+            best = (score, img, x)
+    if best is None:
+        raise ClipperError("No frame to make the thumbnail from.")
+    return best[1], best[2]
+
+
+def local_thumbnail(frames, title, out_path):
+    """A 1080x1920 cover made here at no cost: the best frame cropped to the face
+    (or the centre), punchier colours, darker edges, the title over it. Returns out_path."""
+    import cv2
+    img, x = best_frame(frames)
+    h, w = img.shape[:2]
+    k = max(1080 / w, 1920 / h)
+    sw, sh = max(1080, int(round(w * k))), max(1920, int(round(h * k)))
+    cx = max(0, min(int(round((0.5 if x is None else x) * sw - 540)), sw - 1080))
+    out_dir, tag = os.path.dirname(os.path.abspath(out_path)), f".thumb_{uuid.uuid4().hex[:8]}"
+    size = 104 if len(title) <= 40 else 84
+    try:
+        cv2.imwrite(os.path.join(out_dir, tag + ".jpg"), img)
+        with open(os.path.join(out_dir, tag + ".ass"), "w", encoding="utf-8") as f:
+            f.write(ASS_HEADER.replace("\n\n[Events]", "\n" + THUMB_STYLE.format(size=size) + "\n[Events]")
+                    + f"Dialogue: 0,{ass_time(0)},{ass_time(10)},Thumb,,0,0,0,,{ass_text(title.upper())}\n")
+        run_ffmpeg(["-i", tag + ".jpg", "-vf", f"scale={sw}:{sh},crop=1080:1920:{cx}:{(sh - 1920) // 2},"
+                    f"eq=contrast=1.08:saturation=1.2,vignette=PI/4,subtitles={tag}.ass",
+                    "-frames:v", "1", "-q:v", "2", os.path.abspath(out_path)], cwd=out_dir)
+    finally:
+        for ext in (".jpg", ".ass"):
+            try:
+                os.remove(os.path.join(out_dir, tag + ext))
+            except OSError:
+                pass
+    return out_path
+
+
 def make_thumbnail(frames, title, message, keys, out_path):
+    """A 1080x1920 cover from video frames (JPEG bytes); returns out_path. Nano Banana
+    designs it with Google Cloud credit (it has no free tier), else, or if it fails,
+    local_thumbnail makes one here for free."""
+    if split_keys(keys)[1]:
+        try:
+            return nano_thumbnail(frames, title, message, keys, out_path)
+        except (ClipperError, httpx.HTTPError) as e:
+            log.warning("Nano Banana thumbnail failed (%s); making it here", e)
+    return local_thumbnail(frames, title, out_path)
+
+
+def nano_thumbnail(frames, title, message, keys, out_path):
     """A 1080x1920 cover from video frames (JPEG bytes) with Nano Banana; returns out_path."""
     import base64
     parts = [{"inlineData": {"mimeType": "image/jpeg", "data": base64.b64encode(f).decode()}} for f in frames]
@@ -1218,6 +1431,7 @@ HOOK_STYLE = ("Style: Hook,Arial,76,&H00FFFFFF,&H00FFFFFF,&H00365AFF,&H00000000,
               "-1,0,0,0,100,100,0,0,3,18,0,8,80,80,300,1\n")
 HIGHLIGHT = r"{\fscx112\fscy112\c&H00D7FF&}"  # Punchy kinetic word pop (112% scale) + gold highlight (#FFD700)
 NORMAL = r"{\fscx100\fscy100\c&HFFFFFF&}"
+KEYWORD = r"{\c&H7FFF00&}"  # trigger words the AI picked stay green (#00FF7F) while their phrase is up
 
 
 def ass_time(t):
@@ -1241,14 +1455,17 @@ def caption_groups(words, max_words=3, max_gap=0.6):
     return groups
 
 
-def build_ass(words, start, end):
-    """Word-by-word captions for one clip: the phrase stays up, the spoken word lights up."""
+def build_ass(words, start, end, keywords=()):
+    """Word-by-word captions for one clip: the phrase stays up, the spoken word lights up,
+    keywords stay coloured."""
+    keys = {_norm(k) for k in keywords} - {""}
     inside = [w for w in words if w["s"] >= start - 0.05 and w["e"] <= end + 0.05]
     groups = caption_groups(inside)
     lines = [ASS_HEADER]
     for gi, group in enumerate(groups):
         group_end = min(group[-1]["e"] + 0.4, groups[gi + 1][0]["s"] if gi + 1 < len(groups) else end)
-        clean = [ass_text(w["w"]) for w in group]
+        clean = [f"{KEYWORD}{ass_text(w['w'])}{NORMAL}" if _norm(w["w"]) in keys else ass_text(w["w"])
+                 for w in group]
         for i, w in enumerate(group):
             t0 = group[0]["s"] if i == 0 else w["s"]
             t1 = group[i + 1]["s"] if i + 1 < len(group) else group_end
@@ -1315,27 +1532,29 @@ def scene_cuts(src, start, end):
     return cuts
 
 
-_detector = None
+_detector = threading.local()  # clips render in parallel: one detector per thread
+_files_lock = threading.Lock()  # shared files made on first use, and clip names being claimed
+_claimed = set()  # clip paths taken by renders still running
 
 
 def face_detector(width, height):
     """YuNet, downloaded once (~230 KB) to tools/. None if it can't be had:
     framing then falls back to Gemini or the centre."""
-    global _detector
     import cv2
     path = os.path.join(TOOLS_DIR, "face_detection_yunet_2023mar.onnx")
     try:
-        if not os.path.exists(path):
-            os.makedirs(TOOLS_DIR, exist_ok=True)
-            data = httpx.get(YUNET_URL, follow_redirects=True, timeout=60).raise_for_status().content
-            with open(path + ".tmp", "wb") as f:
-                f.write(data)
-            os.replace(path + ".tmp", path)
-        if _detector is None:
+        with _files_lock:
+            if not os.path.exists(path):
+                os.makedirs(TOOLS_DIR, exist_ok=True)
+                data = httpx.get(YUNET_URL, follow_redirects=True, timeout=60).raise_for_status().content
+                with open(path + ".tmp", "wb") as f:
+                    f.write(data)
+                os.replace(path + ".tmp", path)
+        if getattr(_detector, "d", None) is None:
             cv2.utils.logging.setLogLevel(cv2.utils.logging.LOG_LEVEL_ERROR)  # hide harmless backend notices
-            _detector = cv2.FaceDetectorYN.create(path, "", (width, height), 0.7)
-        _detector.setInputSize((width, height))
-        return _detector
+            _detector.d = cv2.FaceDetectorYN.create(path, "", (width, height), 0.7)
+        _detector.d.setInputSize((width, height))
+        return _detector.d
     except Exception as e:
         log.warning("Face detection unavailable: %s", e)
         return None
@@ -1501,13 +1720,21 @@ def crop_x(plan, t):
     return int(max(0, min(plan["scaled_w"] - 1080, round(x * plan["scaled_w"] - 540))))
 
 
-def framing(inp, layout, plan, t0, dur, out_dir, tag, cmd_name):
+def punch_in(zoom):
+    """A digital push-in on a 1080x1920 frame, a bit above centre so eyes stay in the upper third."""
+    if zoom <= 1.0:
+        return ""
+    w = int(round(1080 * zoom / 2)) * 2
+    return f",scale={w}:-2,crop=1080:1920:(iw-1080)/2:(ih-1920)*0.4"
+
+
+def framing(inp, layout, plan, t0, dur, out_dir, tag, cmd_name, zoom=1.0):
     """Filter chain turning input inp into a 1080x1920 frame labelled [tag].
     The crop moves through sendcmd keyframes (cmd_name, written to out_dir)."""
     if layout == "fit":
         return f"{inp}{fit_chain(tag + 'f')}[{tag}]"
     if not plan:
-        return f"{inp}{FILL}[{tag}]"
+        return f"{inp}{FILL}{punch_in(zoom)}[{tag}]"
     lines, last = [], None
     for k in range(int(dur * 15) + 1):
         x = crop_x(plan, t0 + k / 15)
@@ -1517,7 +1744,7 @@ def framing(inp, layout, plan, t0, dur, out_dir, tag, cmd_name):
     with open(os.path.join(out_dir, cmd_name), "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     track = (f"scale={plan['scaled_w']}:1920,sendcmd=f={cmd_name},"
-             f"crop@{tag}=1080:1920:{crop_x(plan, t0)}:0,setsar=1")
+             f"crop@{tag}=1080:1920:{crop_x(plan, t0)}:0,setsar=1{punch_in(zoom)}")
     fits = [s for s in plan["shots"] if s["mode"] == "fit" and s["e"] > t0 and s["s"] < t0 + dur]
     if layout != "auto" or not fits:
         return f"{inp}{track}[{tag}]"
@@ -1529,7 +1756,7 @@ def framing(inp, layout, plan, t0, dur, out_dir, tag, cmd_name):
 WHOOSH = 0.6  # seconds of transition sound at the end of the hook
 SAME = "aresample=48000,aformat=channel_layouts=stereo"  # concat and amix need matching audio
 CAPTION_STYLE = ("Style: Caption,Arial,86,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
-                 "-1,0,0,0,100,100,0,0,1,7,3,2,90,90,560,1")
+                 "-1,0,0,0,100,100,0,0,1,7,3,2,150,150,560,1")
 CAPTION_Y = round(1 - 560 / 1920, 4)  # where captions sit by default (their bottom edge, 0-1 from the top)
 TEXT_STYLES = ("Style: Text,Arial,72,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
                "-1,0,0,0,100,100,0,0,1,6,2,5,40,40,0,1\n"
@@ -1549,10 +1776,11 @@ SFX = {
 
 def sfx_path(name):
     path = os.path.join(TOOLS_DIR, "sfx", f"{name}.wav")
-    if not os.path.exists(path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        source, filters = SFX[name]
-        run_ffmpeg(["-f", "lavfi", "-i", source, "-af", filters, "-ac", "2", path])
+    with _files_lock:  # parallel renders: one makes it, the others wait for the whole file
+        if not os.path.exists(path):
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            source, filters = SFX[name]
+            run_ffmpeg(["-f", "lavfi", "-i", source, "-af", filters, "-ac", "2", path])
     return path
 
 
@@ -1566,8 +1794,9 @@ def build_edit_ass(words, total, captions, texts):
     size = int(captions.get("size", 86))
     margin = int(round((1 - captions.get("y", CAPTION_Y)) * 1920))
     styles = (f"Style: Caption,Arial,{size},&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
-              f"-1,0,0,0,100,100,0,0,1,{max(3, size // 12)},3,2,90,90,{margin},1\n{TEXT_STYLES}")
-    ass = build_ass(words if captions.get("on", True) else [], 0, total).replace(CAPTION_STYLE, styles)
+              f"-1,0,0,0,100,100,0,0,1,{max(3, size // 12)},3,2,150,150,{margin},1\n{TEXT_STYLES}")
+    ass = build_ass(words if captions.get("on", True) else [], 0, total,
+                    captions.get("keywords") or ()).replace(CAPTION_STYLE, styles)
     for t in texts:
         rgb = t.get("color", "#ffffff").lstrip("#")
         body = ass_text(t["text"]).replace("\n", "\\N")
@@ -1596,7 +1825,7 @@ def part_video(inp, frame, size, plan, t0, dur, out_dir, tag, cmd_name):
     if mode == "fit":
         return f"{inp}{fit_chain(tag + 'f')}[{tag}]"
     if mode == "auto" and plan:
-        return framing(inp, "auto", plan, t0, dur, out_dir, tag, cmd_name)
+        return framing(inp, "auto", plan, t0, dur, out_dir, tag, cmd_name, float(frame.get("zoom", 1)))
     return f"{inp}{cover_chain(size, frame if mode == 'manual' else {})}[{tag}]"
 
 
@@ -1715,14 +1944,65 @@ def render_edit(src, edl, words, out_dir, name, intro=None, voice=None, plan=Non
     return out_file
 
 
-def clip_edl(clip, layout, captions=True):
-    """The edit a freshly made clip starts from: its parts, as the AI cut them."""
-    return {"title": clip["title"],
-            "segments": [{"s": x["s"], "e": x["e"], "volume": 1.0,
-                          "frame": {"mode": layout if layout in ("auto", "fit") else "fill", "x": 0.5, "y": 0.5, "zoom": 1.0}}
-                         for x in clip.get("parts") or [{"s": clip["start"], "e": clip["end"]}]],
-            "texts": [], "sounds": [],
-            "captions": {"on": bool(captions), "y": CAPTION_Y, "size": 86},
+FILLERS = {"um", "uh", "uhm", "umm", "erm", "er", "hmm", "mm", "ah"}
+PAUSE = 0.3      # silence longer than this is cut out (breath cutting)
+PAD = 0.06       # kept either side of such a cut so words aren't clipped
+SHOT = 3.0       # past this a talking shot changes at the next word gap (the 2-3 s cut rule)
+MIN_SHOT = 1.0   # shorter shots join the one before
+PUNCH = 1.15     # every other shot is pushed in this much
+
+
+def pace(parts, words):
+    """The AI's parts as jump-cut shots: pauses and filler words cut out, a cut at
+    least every few seconds, alternate shots punched in (see clip_edl). "join" marks
+    a shot that starts a new part (a real jump in the video). Without words: the parts."""
+    shots = []
+    for k, x in enumerate(parts):
+        kept = [w for w in words if w["s"] >= x["s"] - 0.05 and w["e"] <= x["e"] + 0.05
+                and _norm(w["w"]) not in FILLERS]
+        if not kept:
+            shots.append({"s": x["s"], "e": x["e"], "join": k > 0})
+            continue
+        runs = [[max(x["s"], kept[0]["s"] - PAD), kept[0]["e"]]]
+        for prev, w in zip(kept, kept[1:]):
+            gap = w["s"] - prev["e"]
+            if gap > PAUSE:
+                runs[-1][1] = prev["e"] + PAD
+                runs.append([w["s"] - PAD, w["e"]])
+            elif runs[-1][1] - runs[-1][0] >= SHOT and gap >= 0.03:
+                mid = (prev["e"] + w["s"]) / 2  # contiguous cut in the gap between two words
+                runs[-1][1] = mid
+                runs.append([mid, w["e"]])
+            else:
+                runs[-1][1] = w["e"]
+        runs[-1][1] = x["e"] if k == len(parts) - 1 else min(x["e"], runs[-1][1] + PAD)  # let the payoff breathe
+        merged = [runs[0]]
+        for r in runs[1:]:
+            if r[1] - r[0] < MIN_SHOT or merged[-1][1] - merged[-1][0] < MIN_SHOT:
+                merged[-1][1] = r[1]
+            else:
+                merged.append(r)
+        shots += [{"s": round(a, 3), "e": round(b, 3), "join": k > 0 and j == 0} for j, (a, b) in enumerate(merged)]
+    return shots
+
+
+def clip_edl(clip, layout, captions=True, words=None):
+    """The edit a freshly made clip starts from: its parts as the AI cut them, paced
+    into shots (see pace) when the clip has them or words are given."""
+    parts = clip.get("parts") or [{"s": clip["start"], "e": clip["end"]}]
+    shots = clip.get("shots") or (pace(parts, words) if words else [dict(x, join=k > 0) for k, x in enumerate(parts)])
+    mode = layout if layout in ("auto", "fit") else "fill"
+    segments, sounds, t = [], [], 0.0
+    for k, x in enumerate(shots):
+        if x.get("join") and t > WHOOSH:  # a jump to another moment: a whoosh resets attention
+            sounds.append({"file": "sfx:whoosh", "t0": round(t - 0.5, 3), "volume": 0.5, "dur": 0.7})
+        segments.append({"s": x["s"], "e": x["e"], "volume": 1.0,
+                         "frame": {"mode": mode, "x": 0.5, "y": 0.5, "zoom": PUNCH if k % 2 else 1.0}})
+        t += x["e"] - x["s"]
+    texts = [] if clip.get("intro") else [  # no cold open: the premise still shows in the first 2.5 s
+        {"text": clip["title"], "t0": 0, "t1": 2.5, "x": 0.5, "y": 0.2, "size": 72, "box": True, "color": "#ffffff"}]
+    return {"title": clip["title"], "segments": segments, "texts": texts, "sounds": sounds,
+            "captions": {"on": bool(captions), "y": CAPTION_Y, "size": 86, "keywords": clip.get("keywords") or []},
             "hook": {"on": bool(clip.get("intro")), "line": clip.get("voiceover") or clip["title"]}}
 
 
@@ -1736,9 +2016,17 @@ def render_clip(src, clip, words, out_dir, index, layout, captions=True, voice=N
         clean = safe_filename(clip.get("title") or "") or f"clip_{index:02d}"
         candidate = clean
         dup = 2
-        while os.path.exists(os.path.join(out_dir, candidate + ".mp4")):
-            candidate = f"{clean} ({dup})"
-            dup += 1
-        out_name = candidate
-    return render_edit(src, clip_edl(clip, layout, captions), words, out_dir, f"clip_{index:02d}",
-                       clip.get("intro"), voice, plan, out_name=out_name)
+        with _files_lock:  # two clips with one title rendering at once must not share a file
+            while (os.path.exists(os.path.join(out_dir, candidate + ".mp4"))
+                   or os.path.join(out_dir, candidate) in _claimed):
+                candidate = f"{clean} ({dup})"
+                dup += 1
+            out_name = candidate
+            _claimed.add(os.path.join(out_dir, out_name))
+    if not clip.get("shots"):  # kept on the clip, so the editor starts from the same cut
+        clip["shots"] = pace(clip.get("parts") or [{"s": clip["start"], "e": clip["end"]}], words)
+    try:
+        return render_edit(src, clip_edl(clip, layout, captions), words, out_dir, f"clip_{index:02d}",
+                           clip.get("intro"), voice, plan, out_name=out_name)
+    finally:
+        _claimed.discard(os.path.join(out_dir, out_name))

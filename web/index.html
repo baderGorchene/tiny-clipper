@@ -5,8 +5,6 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Tiny Clipper</title>
-  <!-- Puter: free Gemini text-to-speech for the hook voice, run from this page (user-pays, no API key). -->
-  <script src="https://js.puter.com/v2/"></script>
   <link rel="icon"
     href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23ff5a36'/><path d='M11 9l12 7-12 7z' fill='white'/></svg>">
   <style>
@@ -148,6 +146,19 @@
     .btn:disabled {
       opacity: .45;
       cursor: not-allowed;
+    }
+
+    .topbar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .topbar select {
+      padding: 9px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: var(--card);
     }
 
     .btn.ghost {
@@ -633,6 +644,68 @@
       width: min(480px, calc(100vw - 32px));
     }
 
+    #reviewDlg {
+      width: min(760px, calc(100vw - 32px));
+    }
+
+    .rv {
+      border-top: 1px solid var(--line);
+      padding: 16px 0;
+    }
+
+    .rv.off> :not(.check) {
+      opacity: .4;
+    }
+
+    .rv input.text {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--bg);
+      margin-bottom: 12px;
+    }
+
+    .rv-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .rv-row .btn {
+      white-space: nowrap;
+    }
+
+    .sents {
+      max-height: 260px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 4px;
+    }
+
+    .sent {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      padding: 6px 8px;
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .sent.in {
+      background: var(--accent-soft);
+      color: var(--ink);
+    }
+
+    .bad-text {
+      color: var(--bad);
+    }
+
     dialog::backdrop {
       background: rgba(0, 0, 0, .5);
     }
@@ -691,7 +764,14 @@
         </svg>
         Tiny Clipper
       </div>
-      <button class="btn ghost" id="keysBtn" type="button">🔑 Keys</button>
+      <div class="topbar">
+        <select id="modeSel" aria-label="Which AI services to use" title="Which AI services to use">
+          <option value="hybrid_auto">⚡ Auto: all keys</option>
+          <option value="free_local">🆓 100% free</option>
+          <option value="gcp_native">☁️ 100% Google Cloud</option>
+        </select>
+        <button class="btn ghost" id="keysBtn" type="button">🔑 Keys</button>
+      </div>
     </header>
 
     <!-- Setup: shown first until a key is in, reopened with the Keys button -->
@@ -760,6 +840,9 @@
             <span>Start with a hook <span class="small">· the best moment, muted, with an AI voice (“Watch how this
                 man…”) and a whoosh into the clip</span></span></label>
           <label class="check"><input type="checkbox" id="captions" checked> Add captions</label>
+          <label class="check"><input type="checkbox" id="review" checked>
+            <span>Let me review the picks first <span class="small">· nothing is cut until you approve: fix titles
+                and hook lines, add or drop sentences (after 30 min it goes ahead with the clips scoring 85+)</span></span></label>
         </div>
 
         <button class="btn big" id="go" type="submit">✂️ Make my clips</button>
@@ -789,6 +872,16 @@
       <button class="btn" type="button" id="postGo">📤 Post</button>
     </div>
   </dialog>
+  <dialog id="reviewDlg" aria-labelledby="reviewTitle">
+    <h2 id="reviewTitle" style="margin-bottom:4px">Review the picks</h2>
+    <p class="small" style="margin-top:0">Nothing is voiced or cut until you approve. Untick a clip to drop it.</p>
+    <div id="reviewList"></div>
+    <p class="msg bad" id="reviewMsg" aria-live="polite"></p>
+    <div style="display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:-24px;background:var(--card);padding:12px 0">
+      <button class="btn ghost" type="button" id="reviewCancel">Later</button>
+      <button class="btn" type="button" id="reviewGo">✂️ Cut the kept clips</button>
+    </div>
+  </dialog>
   <div class="toast hidden" id="toast" role="status"></div>
 
   <script>
@@ -808,14 +901,12 @@
         placeholder: 'gsk_…', backup: 'Make it with another free Groq account: each account has its own limits.'
       },
     ];
-    const STAGES = [['download', 'Download'], ['transcribe', 'Speech to text'], ['pick', 'Best moments'], ['voice', 'AI voice'], ['render', 'Cutting clips']];
-    // Hook voice: Gemini TTS through Puter, from the page (Puter has no server key to give us).
-    // Only the hook text is sent: any instruction text would be read out loud.
-    // OpenAI's voice takes the text exactly as given. Puter's Gemini voice wraps it in a
-    // prompt ("Say the following text aloud.") that gemini-3.8-flash-tts reads out loud.
-    const VOICE = { provider: 'openai', model: 'gpt-4o-mini-tts', voice: 'ash' };
-    const VOICE_CLEAN = VOICE.provider !== 'gemini';  // tells the app no clean-up is needed
-    const puterOn = () => { try { return !!window.puter && puter.auth.isSignedIn(); } catch { return false; } };
+    const STAGES = [['download', 'Download'], ['transcribe', 'Speech to text'], ['pick', 'Best moments'], ['review', 'Your review'], ['voice', 'AI voice'], ['render', 'Cutting clips']];
+    const REVIEW = 'awaiting_hitl_review';
+    const MODE_NOTE = {
+      free_local: '⏸ Paused: “100% free” is on.',
+      gcp_native: '⏸ Paused: “100% Google Cloud” is on.',
+    };
     const $ = (id) => document.getElementById(id);
     const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     let keys = {}, jobs = [], pollTimer = null;
@@ -850,9 +941,10 @@
           <p class="small" style="margin:4px 0 0">Used when the main key hits its free limit. ${k.backup}</p>
           <div class="hidden" id="edit-${k.id}">${keyForm(k)}</div>${k.id === 'gemini' ? cloudBox() : ''}`
             : keyForm(k)}
-        ${keys.cloud_only && k.id !== 'gemini' ? '<p class="small" style="margin:8px 0 0">⏸ Paused: “Use only Google Cloud” is on.</p>' : ''}
+        ${keys.mode === 'gcp_native' && k.id !== 'gemini' ? `<p class="small" style="margin:8px 0 0">${MODE_NOTE.gcp_native}</p>` : ''}
       </div></li>`;
-      }).join('') + voiceStep();
+      }).join('');
+      $('modeSel').value = keys.mode || 'hybrid_auto';
       $('setupDone').disabled = !hasGroq();
       $('setupDone').textContent = hasGroq() ? 'Start making clips →' : 'Add your Gemini key to continue';
     }
@@ -864,28 +956,14 @@
       return `<div class="${on ? 'saved' : 'warn-box'}" style="margin-top:12px;display:block">
         <b>☁️ Google Cloud credit: ${on ? 'on' : 'not on yet'}</b>
         <p class="small" style="margin:4px 0 0;color:inherit">${on
-          ? 'Paid from your Google Cloud credit: Google speech-to-text, Gemini 3.1 Pro picks your clips, Gemini makes the hook voices and Nano Banana Pro designs a thumbnail for every clip.'
+          ? 'Paid from your Google Cloud credit: Google speech-to-text, Gemini Flash picks your clips, Gemini makes the hook voices and Nano Banana Pro designs a thumbnail for every clip.'
           : 'To spend your Google Cloud credit: in the Google Cloud project of this key, turn on the <b>Agent Platform API</b> (Vertex AI) and make sure the project uses the billing account with your credit. Then click Check again.'}</p>
-        ${on ? `<label class="check" style="margin-top:10px;font-weight:600"><input type="checkbox" id="cloudOnly" ${keys.cloud_only ? 'checked' : ''}>
-          Use only Google Cloud <span class="small" style="color:inherit;font-weight:400">· your other keys stay saved, unused, for when the credit ends</span></label>` : ''}
+        ${keys.mode === 'free_local' ? `<p class="small" style="margin:8px 0 0;color:inherit">${MODE_NOTE.free_local}</p>` : ''}
         <p class="small" style="margin:8px 0 0;color:inherit">🎙 Speech-to-text on Google Cloud: ${keys.signin
           ? `✓ signed in (project ${esc(keys.signin)})`
           : 'needs the Google sign-in on this computer: install the <a href="https://cloud.google.com/sdk/docs/install" target="_blank" rel="noopener">Google Cloud CLI</a>, run <code>gcloud auth application-default login</code> and <code>gcloud auth application-default set-quota-project YOUR_PROJECT_ID</code>, then restart Tiny Clipper.'}</p>
         <button class="linkbtn" type="button" id="cloudCheck" style="margin-top:6px">Check again</button>
         <p class="small" id="cloudMsg" aria-live="polite" style="margin:4px 0 0;color:inherit"></p></div>`;
-    }
-
-    function voiceStep() {
-      const on = puterOn();
-      return `<li class="step ${on ? 'done' : ''}"><span class="num" aria-hidden="true">${on ? '✓' : 3}</span><div>
-    <h2>AI voice for hooks <span class="tag opt">Optional</span></h2>
-    <p class="small" style="margin:2px 0 0">Backup voice for the hooks. Gemini (step 1) makes them first; Puter (OpenAI's voice) only steps in if Gemini's voice isn't available. No key needed, just a free Puter account.</p>
-    ${on ? '<div class="saved" style="margin-top:12px"><span>✓ Connected to Puter</span><button class="linkbtn" type="button" id="voiceTest">▶ Test voice</button></div>'
-          : `<button class="btn" style="margin-top:12px" type="button" id="puterConnect">Connect Puter</button>
-         <p class="small">A Puter window opens: sign in or create a free account. Skip it and hooks still work, just without the voice.</p>`}
-    ${keys.cloud_only ? '<p class="small" style="margin:8px 0 0">⏸ Paused: “Use only Google Cloud” is on.</p>' : ''}
-    <p class="msg" id="puterMsg" aria-live="polite"></p>
-  </div></li>`;
     }
 
     /* ---------- social platforms ---------- */
@@ -1012,13 +1090,13 @@
     <p class="msg" aria-live="polite"></p>`;
     }
 
-    $('keySteps').addEventListener('change', async (e) => {
-      if (e.target.id !== 'cloudOnly') return;
+    // Which AI services run: the keys a mode leaves out stay saved, unused.
+    $('modeSel').addEventListener('change', async (e) => {
       try {
-        const r = await api('/api/keys/cloud-only', postJson({ on: e.target.checked }));
-        keys.cloud_only = r.cloud_only; renderKeys();
-        toast(r.cloud_only ? 'Using only Google Cloud' : 'Using all your keys again');
-      } catch (err) { e.target.checked = !e.target.checked; toast(err.message); }
+        const r = await api('/api/keys/mode', postJson({ mode: e.target.value }));
+        keys.mode = r.mode; renderKeys();
+        toast(e.target.selectedOptions[0].textContent.trim());
+      } catch (err) { e.target.value = keys.mode || 'hybrid_auto'; toast(err.message); }
     });
 
     $('keySteps').addEventListener('submit', async (e) => {
@@ -1047,14 +1125,6 @@
             : bad.map((r) => `${esc(r.key)}: ${linkify(esc(r.message))}`).join('<br>');
         } catch (err) { $('cloudMsg').textContent = '✗ ' + err.message; }
         if ($('cloudCheck')) $('cloudCheck').textContent = 'Check again';
-      } else if (t.id === 'voiceTest') {
-        t.textContent = 'Recording…';
-        try { (await puter.ai.txt2speech('Watch how this simple trick changes everything.', VOICE)).play(); }
-        catch (err) { $('puterMsg').className = 'msg bad'; $('puterMsg').textContent = '✗ ' + String(err?.message || err?.error?.message || err); }
-        t.textContent = '▶ Test voice';
-      } else if (t.id === 'puterConnect') {
-        try { await puter.auth.signIn(); renderKeys(); toast('AI voice connected'); }
-        catch (err) { $('puterMsg').className = 'msg bad'; $('puterMsg').textContent = window.puter ? '✗ Puter sign-in was closed or failed. Try again.' : '✗ Puter could not load. Check your internet connection.'; }
       } else if (t.classList.contains('eye')) {
         const input = t.previousElementSibling, show = input.type === 'password';
         input.type = show ? 'text' : 'password'; t.setAttribute('aria-label', show ? 'Hide key' : 'Show key');
@@ -1113,6 +1183,7 @@
       fd.append('layout', document.querySelector('[name=layout]:checked').value);
       fd.append('captions', $('captions').checked);
       fd.append('intro', $('intro').checked);
+      fd.append('review', $('review').checked);
       const go = $('go'); go.disabled = true; go.textContent = mode === 'file' ? 'Uploading…' : 'Starting…';
       try {
         await api('/api/jobs', { method: 'POST', body: fd });
@@ -1129,12 +1200,13 @@
     const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`;
 
     function progressHtml(j) {
-      const idx = STAGES.findIndex(([id]) => id === j.step);
+      const stages = STAGES.filter(([id]) => id !== 'review' || j.review);
+      const idx = stages.findIndex(([id]) => id === j.step);
       const pct = j.progress == null ? null : Math.round(j.progress * 100);
       return `<div class="progress">
     <div class="small" style="color:var(--ink);font-weight:600">${esc(j.message || 'Working…')}</div>
     <div class="bar ${pct == null ? 'indeterminate' : ''}" role="progressbar" aria-label="Progress" ${pct == null ? '' : `aria-valuenow="${pct}"`}><div style="width:${pct ?? 30}%"></div></div>
-    <ol class="stages">${STAGES.map(([id, label], i) => `<li class="${i < idx ? 'past' : i === idx ? 'now' : ''}">${i < idx ? '✓ ' : ''}${label}</li>`).join('')}</ol>
+    <ol class="stages">${stages.map(([id, label], i) => `<li class="${i < idx ? 'past' : i === idx ? 'now' : ''}">${i < idx ? '✓ ' : ''}${label}</li>`).join('')}</ol>
   </div>`;
     }
 
@@ -1206,6 +1278,8 @@
         ${busy ? '' : `<div>${j.status === 'error' || j.missing ? `<button class="btn small-btn ghost" type="button" data-retry="${j.id}" aria-label="Retry ${esc(j.name)}">Retry</button> ` : ''}<button class="btn small-btn ghost" type="button" data-delete="${j.id}" aria-label="Delete ${esc(j.name)}">Delete</button></div>`}
       </div>
       ${busy ? progressHtml(j) : ''}
+      ${j.status === REVIEW ? `<div class="warn-box">✋ ${j.picked.filter((c) => !c.dropped).length} picks are waiting for you. Nothing is cut until you approve${j.auto_approve_at ? ` (at ${new Date(j.auto_approve_at * 1000).toLocaleTimeString([], { timeStyle: 'short' })} it goes ahead with the clips scoring 85+)` : ''}.
+        <button class="btn small-btn" type="button" data-review="${esc(j.id)}" style="margin-left:6px">Review picks</button></div>` : ''}
       ${j.status === 'error' ? `<div class="error-box">${esc(j.error)} <a href="/api/logs" target="_blank" rel="noopener">See the log</a></div>` : ''}
       ${j.warning ? `<div class="warn-box">ℹ️ ${linkify(esc(j.warning))}</div>` : ''}
       ${j.clips.length ? `<div class="grid" style="margin-top:12px">${j.clips.map((c, i) => clipHtml(j, c, i + 1)).join('')}</div>` : ''}
@@ -1213,64 +1287,21 @@
       }).join('');
     }
 
-    // The server waits while this page records each hook voice and sends it back.
-    const voicing = new Set();
-    // Debug: show exactly what goes to Puter. puter.js calls its servers itself, so
-    // its outgoing driver requests are logged too (fetch and XHR), to see what it adds.
-    (() => {
-      const isDriverCall = (url) => /puter\.com\/drivers\/call/.test(String(url));
-      const origFetch = window.fetch;
-      window.fetch = function (input, init) {
-        const url = typeof input === 'string' ? input : input?.url;
-        if (isDriverCall(url)) console.log('[Tiny Clipper → Puter] request', url, init?.body);
-        return origFetch.apply(this, arguments);
-      };
-      const open = XMLHttpRequest.prototype.open, send = XMLHttpRequest.prototype.send;
-      XMLHttpRequest.prototype.open = function (method, url) { this._tcUrl = url; return open.apply(this, arguments); };
-      XMLHttpRequest.prototype.send = function (body) {
-        if (isDriverCall(this._tcUrl)) console.log('[Tiny Clipper → Puter] request (XHR)', this._tcUrl, body);
-        return send.apply(this, arguments);
-      };
-    })();
-
-    async function recordVoices() {
-      for (const j of jobs) {
-        for (const r of j.voice_requests || []) {
-          const id = `${j.id}:${r.i}:${r.text}`;
-          if (voicing.has(id)) continue;
-          voicing.add(id);
-          const fd = new FormData();
-          try {
-            if (!window.puter) throw new Error('Puter could not load. Check your internet connection');
-            console.log(`[Tiny Clipper → Puter] clip ${r.i} hook text:`, JSON.stringify(r.text), 'options:', JSON.stringify(VOICE));
-            const audio = await puter.ai.txt2speech(r.text, VOICE);
-            const blob = await (await fetch(audio.src)).blob();
-            console.log(`[Tiny Clipper ← Puter] clip ${r.i} audio:`, blob.type, `${blob.size} bytes`);
-            fd.append('file', blob, 'voice');
-            if (VOICE_CLEAN) fd.append('clean', '1');
-          } catch (err) {
-            console.error(`[Tiny Clipper ← Puter] clip ${r.i} failed:`, err);
-            fd.append('error', String(err?.message || err?.error?.message || err?.error || err));
-          }
-          await fetch(`/api/jobs/${encodeURIComponent(j.id)}/voice/${r.i}`, { method: 'POST', body: fd }).catch(() => { });
-        }
-      }
-    }
-
     async function loadJobs() {
       try { jobs = await api('/api/jobs'); } catch { return; }
-      recordVoices();
       // Only redraw when something changed, so playing videos aren't interrupted.
       const sig = JSON.stringify(jobs);
       if (sig !== loadJobs.last) { loadJobs.last = sig; renderLibrary(); }
       clearTimeout(pollTimer);
       const posting = (j) => j.clips.some((c) => c.editing || c.thumb_status || Object.values(c.posts || {}).some((r) => r.status === 'posting'));
-      if (jobs.some((j) => j.status === 'queued' || j.status === 'running' || posting(j))) pollTimer = setTimeout(loadJobs, 2000);
+      if (jobs.some((j) => j.status === 'queued' || j.status === 'running' || j.status === REVIEW || posting(j))) pollTimer = setTimeout(loadJobs, 2000);
     }
 
     $('library').addEventListener('click', async (e) => {
       const t = e.target.closest('button'); if (!t) return;
-      if (t.dataset.retry) {
+      if (t.dataset.review) {
+        openReview(t.dataset.review);
+      } else if (t.dataset.retry) {
         try { await api(`/api/jobs/${encodeURIComponent(t.dataset.retry)}/retry`, { method: 'POST' }); toast('Picking up where it stopped…'); loadJobs(); }
         catch (err) { toast(err.message); }
       } else if (t.dataset.delete) {
@@ -1304,11 +1335,100 @@
       }
     });
 
+    /* ---------- review the picks before cutting ---------- */
+    let review = null;  // { jobId, data, sel: [Set of sentence ids, per clip] }
+    function runsOf(set) {
+      const runs = [];
+      for (const k of [...set].sort((a, b) => a - b)) {
+        const r = runs[runs.length - 1];
+        if (r && k === r[1] + 1) r[1] = k; else runs.push([k, k]);
+      }
+      return runs;
+    }
+    // Keep the AI's part order: a later moment may open the clip.
+    function playOrder(runs, orig) {
+      const at = ([a, b]) => { const k = orig.findIndex(([x, y]) => a <= y && b >= x); return k < 0 ? 99 : k; };
+      return runs.sort((r1, r2) => at(r1) - at(r2) || r1[0] - r2[0]);
+    }
+    function sentencesHtml(n) {
+      const S = review.data.sentences, sel = review.sel[n], show = new Set();
+      for (const k of sel) for (let d = -3; d <= 3; d++) if (S[k + d]) show.add(k + d);  // the context around it
+      const ids = [...show].sort((a, b) => a - b);
+      return ids.map((k, j) => `${j && k !== ids[j - 1] + 1 ? '<div class="small" style="padding:0 8px">…</div>' : ''}
+        <button type="button" class="sent ${sel.has(k) ? 'in' : ''}" data-sent="${k}" aria-pressed="${sel.has(k)}"><span class="small">${fmt(S[k].s)}</span> ${esc(S[k].text)}</button>`).join('');
+    }
+    function lenHtml(n) {
+      const d = review.data, runs = runsOf(review.sel[n]);
+      const len = runs.reduce((t, [a, b]) => t + d.sentences[b].e - d.sentences[a].s, 0);
+      const bad = len < d.keep_min || len > d.keep_max || runs.length > d.max_parts;
+      return `<span class="${bad ? 'bad-text' : ''}">${Math.round(len)} s${runs.length > 1 ? ` · ${runs.length} parts` : ''}${bad ? ` · keep it ${d.keep_min}–${d.keep_max} s, ${d.max_parts} parts at most` : ''}</span>`;
+    }
+    function renderReview() {
+      const d = review.data;
+      $('reviewList').innerHTML = d.clips.map((c, n) => c.dropped ? '' : `<div class="rv" data-n="${n}">
+        <label class="check" style="margin-bottom:10px"><input type="checkbox" data-keep checked> <b>Keep</b>
+          <span class="small">· score ${c.score} · <span data-len>${d.sentences.length && c.ids ? lenHtml(n) : `${Math.round(c.end - c.start)} s`}</span></span></label>
+        <label class="label" for="rvTitle${n}">Title</label>
+        <input class="text" id="rvTitle${n}" data-title maxlength="100" value="${esc(c.title)}">
+        ${d.intro && c.intro ? `<label class="label" for="rvVoice${n}">Hook line <span class="small">· spoken and shown over the opening</span></label>
+        <div class="rv-row"><input class="text" id="rvVoice${n}" data-voice maxlength="160" value="${esc(c.voiceover)}">
+          <button class="btn ghost small-btn" type="button" data-preview>▶ Preview voice</button></div>` : ''}
+        ${c.hook ? `<p class="small" style="margin-top:0">Why it works: ${esc(c.hook)}</p>` : ''}
+        ${d.sentences.length && c.ids ? `<div class="label">What it says <span class="small">· click a sentence to add or remove it</span></div>
+          <div class="sents" data-sents>${sentencesHtml(n)}</div>` : ''}
+      </div>`).join('');
+    }
+    async function openReview(jobId) {
+      try {
+        const data = await api(`/api/jobs/${encodeURIComponent(jobId)}/review`);
+        const span = ([a, b]) => Array.from({ length: b - a + 1 }, (_, k) => a + k);
+        review = { jobId, data, sel: data.clips.map((c) => new Set((c.ids || []).flatMap(span))) };
+      } catch (err) { toast(err.message); loadJobs(); return; }
+      renderReview(); $('reviewMsg').textContent = ''; $('reviewDlg').showModal();
+    }
+    $('reviewList').addEventListener('click', async (e) => {
+      const t = e.target.closest('button'); if (!t) return;
+      const box = t.closest('.rv'), n = +box.dataset.n;
+      if (t.dataset.sent) {
+        const k = +t.dataset.sent, sel = review.sel[n];
+        if (sel.has(k)) sel.delete(k); else sel.add(k);
+        box.querySelector('[data-sents]').innerHTML = sentencesHtml(n);
+        box.querySelector('[data-len]').innerHTML = lenHtml(n);
+        box.querySelector(`[data-sent="${k}"]`)?.focus();
+      } else if (t.hasAttribute('data-preview')) {
+        t.disabled = true; t.textContent = 'Recording…';
+        try {
+          const r = await api(`/api/jobs/${encodeURIComponent(review.jobId)}/review/voice`, postJson({ i: n + 1, text: box.querySelector('[data-voice]').value }));
+          new Audio(r.url).play();
+        } catch (err) { toast(err.message); }
+        t.disabled = false; t.textContent = '▶ Preview voice';
+      }
+    });
+    $('reviewList').addEventListener('change', (e) => {
+      if (e.target.hasAttribute('data-keep')) e.target.closest('.rv').classList.toggle('off', !e.target.checked);
+    });
+    $('reviewCancel').onclick = () => $('reviewDlg').close();
+    $('reviewGo').onclick = async () => {
+      const clips = [...$('reviewList').querySelectorAll('.rv')].map((box) => {
+        const n = +box.dataset.n, c = review.data.clips[n], voice = box.querySelector('[data-voice]');
+        const edit = { i: n + 1, keep: box.querySelector('[data-keep]').checked, title: box.querySelector('[data-title]').value };
+        if (voice) edit.voiceover = voice.value;
+        if (c.ids && review.data.sentences.length) edit.ids = playOrder(runsOf(review.sel[n]), c.ids);
+        return edit;
+      });
+      $('reviewGo').disabled = true; $('reviewMsg').textContent = '';
+      try {
+        await api(`/api/jobs/${encodeURIComponent(review.jobId)}/review`, postJson({ clips }));
+        $('reviewDlg').close(); toast('Cutting the clips you kept…'); loadJobs();
+      } catch (err) { $('reviewMsg').textContent = '✗ ' + err.message; }
+      finally { $('reviewGo').disabled = false; }
+    };
+
     let posting = null;
     function openPost(jobId, n) {
       const c = jobs.find((j) => j.id === jobId).clips[n - 1];
       posting = { jobId, n };
-      $('caption').value = c.title;
+      $('caption').value = [c.caption || c.title, (c.hashtags || []).join(' ')].filter(Boolean).join('\n\n');
       $('postTargets').innerHTML = connected().map((p) => `<label class="choice"><input type="checkbox" name="target" value="${p.id}" checked><span>${p.name}</span></label>`).join('');
       $('postNote').textContent = 'Instagram posts publicly. YouTube uploads stay private until Google’s audit. TikTok gets a draft to finish in the app.';
       $('postDlg').showModal();

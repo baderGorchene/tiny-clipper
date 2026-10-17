@@ -17,7 +17,7 @@ import traceback
 import urllib.parse
 import uuid
 import webbrowser
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -50,6 +50,9 @@ app = FastAPI(title="Tiny Clipper")
 # One video at a time: the free tiers limit requests per minute, so parallel
 # jobs would only trip each other's rate limits.
 worker = ThreadPoolExecutor(max_workers=1)
+# Clips of one job made at once: most of a clip's time is waiting on Gemini (framing,
+# thumbnail), and NVENC takes several encodes. ponytail: fixed 3, raise with a faster GPU/CPU.
+CLIP_WORKERS = int(os.environ.get("CLIP_WORKERS", 3))
 lock = threading.RLock()  # re-entrant: read-modify-write helpers call write_job inside it
 
 
@@ -100,18 +103,29 @@ def load_keys():
     return out
 
 
+def provider_mode():
+    """hybrid_auto (every key, Cloud credit first), free_local (free tiers only: no
+    Cloud credit, no paid sign-in) or gcp_native (Google Cloud only). An older
+    settings.json with "cloud_only" on reads as gcp_native."""
+    saved = load_settings()
+    mode = saved.get("provider_mode") or ("gcp_native" if saved.get("cloud_only") else "hybrid_auto")
+    return mode if mode in clipper.PROVIDER_MODES else "hybrid_auto"
+
+
 def cloud_only():
-    return bool(load_settings().get("cloud_only"))
+    return provider_mode() == "gcp_native"
 
 
 def use_keys():
-    """The keys the pipeline may use. With "Use only Google Cloud" on, just the
-    keys that work on Google Cloud: the free Gemini keys and Groq stay saved for
-    later but aren't called."""
-    keys = load_keys()
-    if cloud_only():
-        return {"gemini": [], "groq": [], "vertex": keys["vertex"]}
-    return keys
+    """The keys the pipeline may use, plus "mode" for what has no key (Cloud
+    sign-in, edge-tts). Keys a mode leaves out stay saved for later, uncalled."""
+    keys, mode = load_keys(), provider_mode()
+    if mode == "gcp_native":
+        return {"gemini": [], "groq": [], "vertex": keys["vertex"], "mode": mode}
+    if mode == "free_local":  # a key that works on Google Cloud has billing on: on AI Studio it'd be paid
+        return {"gemini": [k for k in keys["gemini"] if k not in keys["vertex"]], "groq": keys["groq"],
+                "vertex": [], "mode": mode}
+    return {**keys, "mode": mode}
 
 
 def gemini_keys(keys):
@@ -163,21 +177,27 @@ class KeyBody(BaseModel):
 def get_keys():
     keys, signin = load_keys(), clipper.google_signin()  # signin: Google sign-in on this computer, for Speech-to-Text
     return {**{s: [masked(k) for k in keys[s]] for s in SERVICES},
-            "vertex": [masked(k) for k in keys["vertex"]], "cloud_only": cloud_only(),
+            "vertex": [masked(k) for k in keys["vertex"]], "mode": provider_mode(),
             "signin": signin and (signin[1] or "your default project")}
 
 
-class CloudOnlyBody(BaseModel):
-    on: bool
+class ModeBody(BaseModel):
+    mode: str
 
 
-@app.post("/api/keys/cloud-only")
-def set_cloud_only(body: CloudOnlyBody):
-    """Run everything on Google Cloud credit only; other keys are kept, unused."""
-    if body.on and not load_keys()["vertex"]:
+@app.post("/api/keys/mode")
+def set_mode(body: ModeBody):
+    """Switch the provider stack; keys a mode doesn't use are kept, unused."""
+    if body.mode not in clipper.PROVIDER_MODES:
+        raise HTTPException(400, "Unknown mode.")
+    keys = load_keys()
+    if body.mode == "gcp_native" and not keys["vertex"]:
         raise HTTPException(400, "No key works on Google Cloud yet. Add one, or click Check again.")
-    save_settings({"cloud_only": body.on})
-    return {"ok": True, "cloud_only": body.on}
+    if body.mode == "free_local" and not (keys["groq"] or set(keys["gemini"]) - set(keys["vertex"])):
+        raise HTTPException(400, "100% free needs a free key: a Gemini key from a Google Cloud project without "
+                                 "billing, or a Groq key. Your Gemini key spends Google Cloud credit.")
+    save_settings({"provider_mode": body.mode, "cloud_only": None})
+    return {"ok": True, "mode": body.mode}
 
 
 @app.post("/api/keys/vertex/check")
@@ -266,16 +286,14 @@ def write_job(job):
         replace_file(path + ".tmp", path)
 
 
-# Hook voices are made by Puter (Gemini TTS) in the open page, which uploads
-# voice_NN.<ext> here, or voice_NN.err when it couldn't.
-VOICE_FIRST_WAIT, VOICE_TOTAL_WAIT = 45, 240
-NO_PAGE = "Hooks were made without the AI voice: keep the Tiny Clipper page open while clips are made."
+NO_VOICE = "Some hooks have no AI voice: every voice service failed (see the log)."
 
 
 def clean_voice(path, text, groq_key):
-    """Cut anything spoken before the hook line, for voices from Puter's Gemini
-    voice (it reads Puter's "Say the following text aloud." wrapper). Each voice
-    is checked once, then marked ".clean"; clean voices cost no Groq at all."""
+    """Cut anything spoken before the hook line, for voices recorded by Puter's
+    Gemini voice in older versions (it read Puter's "Say the following text aloud."
+    wrapper). Each voice is checked once, then marked ".clean"; voices made here
+    are ".clean" from the start and cost no Groq at all."""
     if ".clean." in os.path.basename(path):
         return path
     try:
@@ -290,46 +308,16 @@ def clean_voice(path, text, groq_key):
 
 
 def server_voices(folder, wanted, keys):
-    """Hook voices made here with Gemini TTS (Google Cloud credit first, then the
-    free Gemini key). {clip index: path} for the ones that worked; the rest fall
-    back to the page and Puter. Marked ".clean": only the hook text was sent."""
-    done = {}
-    if not (keys["gemini"] or keys["vertex"]):
-        return done
-    for w in wanted:
-        path = os.path.join(folder, f"voice_{w['i']:02d}.clean.wav")
+    """Hook voices, all made here (see clipper.speak): {clip index: path} for the
+    ones that worked. Marked ".clean": only the hook text was sent."""
+    def speak(w):
         try:
-            done[w["i"]] = clipper.gemini_speak(w["text"], gemini_keys(keys), path)
-        except (clipper.ClipperError, httpx.HTTPError) as e:
-            log.warning("Gemini voice failed for clip %d: %s", w["i"], e)
-            break  # same problem for the rest: hand them all to the page
-    return done
+            return clipper.speak(w["text"], keys, os.path.join(folder, f"voice_{w['i']:02d}.clean"))
+        except clipper.ClipperError as e:
+            log.warning("No voice for clip %d: %s", w["i"], e)
 
-
-def collect_voices(folder, ids):
-    """Wait for the page's uploads. Returns ({clip index: audio path}, warning or None)."""
-    def files(i):
-        return [f for f in os.listdir(folder) if f.startswith(f"voice_{i:02d}.")]
-
-    started = time.time()
-    while not all(files(i) for i in ids):
-        waited = time.time() - started
-        if waited > VOICE_TOTAL_WAIT or (waited > VOICE_FIRST_WAIT and not any(files(i) for i in ids)):
-            break  # page closed, or stuck
-        time.sleep(1)
-    voices, errors = {}, []
-    for i in ids:
-        found = files(i)
-        audio = [f for f in found if not f.endswith(".err")]
-        if audio:
-            voices[i] = os.path.join(folder, audio[0])
-        elif found:
-            with open(os.path.join(folder, found[0]), encoding="utf-8") as f:
-                errors.append(f.read())
-            os.remove(os.path.join(folder, found[0]))
-    if len(voices) == len(ids):
-        return voices, None
-    return voices, f"Some hooks have no AI voice ({errors[0]})" if errors else NO_PAGE
+    with ThreadPoolExecutor(max_workers=8) as pool:  # ~3 s each; all at once instead of one by one
+        return {w["i"]: path for w, path in zip(wanted, pool.map(speak, wanted)) if path}
 
 
 def save_words(job_id, words, **extra):
@@ -441,8 +429,15 @@ def run_job(job, source_url, source_path):
                 sentences = clipper.build_sentences(words, segments)
                 job["picked"], job["ai"] = clipper.pick_moments(sentences, duration, job["count"], keys, progress)
                 write_job(job)
+        if job.get("review") and not job.get("reviewed"):
+            # Checkpoint: nothing is voiced or cut until a person (or the auto-approve
+            # timer) okays the picks. Returning frees the worker for the next video.
+            job.update(status=REVIEW, step="review", message="Waiting for you to review the picks",
+                       progress=None, review_since=job.get("review_since") or time.time())
+            log.info("job %s: waiting for review", job["id"])
+            return
         made = {c.get("i") for c in job["clips"]}
-        clips = [(i, c) for i, c in enumerate(job["picked"], 1) if i not in made]
+        clips = [(i, c) for i, c in enumerate(job["picked"], 1) if i not in made and not c.get("dropped")]
 
         voices = {}
         if job.get("intro", True):
@@ -452,53 +447,51 @@ def run_job(job, source_url, source_path):
             if wanted:
                 stage("voice", "Recording the AI voices")
                 voices.update(server_voices(folder, wanted, keys))
-                wanted = [w for w in wanted if w["i"] not in voices]
-            if wanted and cloud_only():
-                job["warning"] = "Some hooks have no voice: Google's voice failed (Google Cloud only is on)."
-            elif wanted:  # Gemini's voice unavailable: the open page records them with Puter
-                job["voice_requests"] = wanted
-                for w in wanted:
-                    log.info("hook text for clip %d: %r", w["i"], w["text"])
-                stage("voice", "Recording the AI voice in your browser. Keep this page open.")
-                page, job["warning"] = collect_voices(folder, [w["i"] for w in wanted])
-                texts = {w["i"]: w["text"] for w in wanted}
-                voices.update({i: clean_voice(v, texts[i], keys["groq"]) for i, v in page.items()})
-                job["voice_requests"] = []
+                if any(w["i"] not in voices for w in wanted):
+                    job["warning"] = NO_VOICE
 
-        stage("render", "Cutting your clips")
-        failed = []
-        for k, (i, picked) in enumerate(clips):
+        stage("render", f"Cutting your clips (0 of {len(clips)} ready)")
+        captions_on = job.get("captions", True) and not job.get("visual")
+
+        def make_clip(i, picked):
+            """One finished clip, made on a pool thread: it only touches its own dict and files,
+            the job itself is updated by run_job's thread as clips come back."""
             clip = dict(picked, i=i)  # i names its files (clip_NN, voice_NN, thumb_NN) for good
             if not job.get("intro", True):
                 clip["intro"] = None
-            try:
-                plan = None
-                if job["layout"] != "fit":
-                    progress(f"Finding the person or subject in clip {i}", k / len(clips))
-                    try:
-                        plan = clipper.plan_parts(source_path, clip["parts"], gemini_keys(keys))
-                    except Exception as e:  # framing is a nicety: fall back to a centre crop
-                        log.warning("Framing failed for clip %d: %s", i, e)
-                    clip["framing"] = clipper.describe_framing(plan)
-                progress(f"Cutting clip {i} of {len(job['picked'])}", k / len(clips))
-                clip["layout"] = job["layout"]
-                captions_on = job.get("captions", True) and not job.get("visual")
-                clip["file"] = clipper.render_clip(source_path, clip, words, folder, i, job["layout"],
-                                                   captions_on, voices.get(i), plan)
-                clip["length"] = round(clipper.media_info(os.path.join(folder, clip["file"]))[0])
-            except Exception as e:  # one bad clip doesn't cost the others: Retry makes it later
-                log.exception("job %s: clip %d failed", job["id"], i)
-                failed.append(f"clip {i} ({e})")
-                continue
-            if keys["vertex"]:
-                progress(f"Designing the thumbnail for clip {i}", (k + 0.8) / len(clips))
+            plan = None
+            if job["layout"] != "fit":
                 try:
-                    clip["thumb"], clip["thumb_v"] = make_thumb(folder, source_path, clip, i, keys), int(time.time())
-                except Exception as e:  # a thumbnail is a bonus: never fail the job over it
-                    clip["thumb_error"] = f"Couldn't make the thumbnail: {e}"
-            job["clips"].append(clip)
-            job["clips"].sort(key=lambda c: c.get("i", 0))
-            write_job(job)  # each clip shows up as soon as it's ready
+                    plan = clipper.plan_parts(source_path, clip["parts"], gemini_keys(keys))
+                except Exception as e:  # framing is a nicety: fall back to a centre crop
+                    log.warning("Framing failed for clip %d: %s", i, e)
+                clip["framing"] = clipper.describe_framing(plan)
+            clip["layout"] = job["layout"]
+            clip["file"] = clipper.render_clip(source_path, clip, words, folder, i, job["layout"],
+                                               captions_on, voices.get(i), plan)
+            clip["length"] = round(clipper.media_info(os.path.join(folder, clip["file"]))[0])
+            try:
+                clip["thumb"], clip["thumb_v"] = make_thumb(folder, source_path, clip, i, keys), int(time.time())
+            except Exception as e:  # a thumbnail is a bonus: never fail the job over it
+                clip["thumb_error"] = f"Couldn't make the thumbnail: {e}"
+            return clip
+
+        failed = []
+        with ThreadPoolExecutor(max_workers=CLIP_WORKERS) as pool:
+            running = {pool.submit(make_clip, i, picked): i for i, picked in clips}
+            for k, done in enumerate(as_completed(running), 1):
+                i = running[done]
+                try:
+                    clip = done.result()
+                except Exception as e:  # one bad clip doesn't cost the others: Retry makes it later
+                    log.error("job %s: clip %d failed", job["id"], i, exc_info=e)
+                    failed.append(f"clip {i} ({e})")
+                    continue
+                finally:
+                    progress(f"Cutting your clips ({k} of {len(clips)} ready)", k / len(clips))
+                job["clips"].append(clip)
+                job["clips"].sort(key=lambda c: c.get("i", 0))
+                write_job(job)  # each clip shows up as soon as it's ready
         job["missing"] = len(failed)
         if failed and not job["clips"]:
             raise clipper.ClipperError("Couldn't cut any clip: " + "; ".join(failed))
@@ -517,24 +510,26 @@ def run_job(job, source_url, source_path):
         # Delete removes them.
         # ponytail: originals stay until deleted; add an auto-cleanup age if disks fill up.
         for name in os.listdir(folder):
-            if name.startswith(".upload_") or name.endswith((".err", ".tmp")):
+            if name.startswith(".upload_") or name.endswith((".err", ".tmp")):  # leftovers of older versions
                 try:
                     os.remove(os.path.join(folder, name))
                 except OSError:  # still locked: leaving a stray file beats losing the job's status
                     pass
-        job["voice_requests"] = []
         write_job(job)
 
 
 @app.post("/api/jobs")
 def create_job(file: Optional[UploadFile] = File(None), url: str = Form(""),
                count: int = Form(5), layout: str = Form("auto"), captions: bool = Form(True),
-               intro: bool = Form(True)):
+               intro: bool = Form(True), review: bool = Form(False)):
     url = url.strip()
     keys = use_keys()
     if cloud_only() and not keys["vertex"]:
-        raise HTTPException(400, "\"Use only Google Cloud\" is on, but no key works on Google Cloud right now. "
-                                 "Click Check again in Keys, or turn that switch off.")
+        raise HTTPException(400, "\"100% Google Cloud\" is on, but no key works on Google Cloud right now. "
+                                 "Click Check again in Keys, or switch to Auto at the top.")
+    if keys["mode"] == "free_local" and not (keys["gemini"] or keys["groq"]):
+        raise HTTPException(400, "\"100% free\" is on, but you have no free key (your Gemini key spends Google "
+                                 "Cloud credit). Add a Groq key in Keys, or switch to Auto at the top.")
     if not (keys["gemini"] or keys["groq"] or keys["vertex"]):
         raise HTTPException(400, "Add your Gemini key first (button: Keys).")
     if not (file and file.filename) and not url:
@@ -579,7 +574,7 @@ def create_job(file: Optional[UploadFile] = File(None), url: str = Form(""),
             shutil.copyfileobj(file.file, out, 1024 * 1024)
     job = {"id": job_id, "name": job_name, "created": time.time(), "status": "queued",
            "step": "queued", "message": "Waiting for the previous video to finish", "progress": None,
-           "count": count, "layout": layout, "captions": captions, "intro": intro, "clips": [],
+           "count": count, "layout": layout, "captions": captions, "intro": intro, "review": review, "clips": [],
            "error": None, "warning": None, "url": url}
     write_job(job)
     worker.submit(run_job, job, url, source_path)
@@ -601,34 +596,6 @@ def retry_job(job_id: str):
     return job
 
 
-VOICE_TYPES = {"audio/wav": ".wav", "audio/x-wav": ".wav", "audio/wave": ".wav", "audio/mpeg": ".mp3",
-               "audio/mp3": ".mp3", "audio/ogg": ".ogg", "audio/webm": ".webm", "audio/aac": ".aac"}
-
-
-@app.post("/api/jobs/{job_id}/voice/{n}")
-def upload_voice(job_id: str, n: int, file: Optional[UploadFile] = File(None), error: str = Form(""),
-                 clean: bool = Form(False)):
-    """The page hands over one hook voice (or why it couldn't make it)."""
-    folder = job_dir(job_id)
-    if not any(r["i"] == n for r in read_job(job_id).get("voice_requests") or []):
-        raise HTTPException(409, "This clip isn't waiting for a voice.")
-    tmp = os.path.join(folder, f".upload_{n:02d}")  # renamed when complete, so the job never reads half a file
-    if file and file.filename:
-        data = file.file.read(10 * 1024 * 1024 + 1)
-        if len(data) > 10 * 1024 * 1024:
-            raise HTTPException(413, "Voice file too large.")
-        with open(tmp, "wb") as f:
-            f.write(data)
-        # ".clean" = made by a voice that reads the text as given: no Groq check needed.
-        os.replace(tmp, os.path.join(folder, f"voice_{n:02d}{'.clean' if clean else ''}"
-                                     + VOICE_TYPES.get(file.content_type, ".audio")))
-    else:
-        with open(tmp, "w", encoding="utf-8") as f:
-            f.write(error.strip()[:300] or "the voice service gave no reason")
-        os.replace(tmp, os.path.join(folder, f"voice_{n:02d}.err"))
-    return {"ok": True}
-
-
 @app.get("/api/jobs")
 def list_jobs():
     jobs = []
@@ -639,6 +606,8 @@ def list_jobs():
             continue
         folder = os.path.join(LIBRARY, job_id)
         job["editable"] = bool(source_of(folder)) and os.path.exists(os.path.join(folder, "transcript.json"))
+        if job["status"] == REVIEW and auto_minutes():
+            job["auto_approve_at"] = job.get("review_since", time.time()) + auto_minutes() * 60
         jobs.append(job)
     return sorted(jobs, key=lambda j: j["created"], reverse=True)
 
@@ -649,6 +618,116 @@ def delete_job(job_id: str):
         raise HTTPException(409, "This video is still being processed.")
     shutil.rmtree(job_dir(job_id))
     return {"ok": True}
+
+
+# --- review before cutting (human in the loop) ---------------------------------
+
+REVIEW = "awaiting_hitl_review"
+
+
+def auto_minutes():
+    """Minutes a review waits before going ahead on its own (settings.json
+    "hitl_auto_approve_minutes", default 30; 0 waits for a person)."""
+    try:
+        return max(0.0, float(load_settings().get("hitl_auto_approve_minutes", 30)))
+    except (TypeError, ValueError):
+        return 30.0
+
+
+def job_sentences(job):
+    """The sentences the picks' ids point into ([] for a visual job)."""
+    transcript = load_transcript(job_dir(job["id"]))
+    if job.get("visual") or not transcript:
+        return []
+    return clipper.build_sentences(transcript["words"], transcript.get("segments") or [])
+
+
+def finish_review(job_id, edits, note=None):
+    """Save the reviewed picks (edits None: an unattended review) and queue the
+    job again: it carries on from the voices, as Retry would."""
+    with lock:
+        job = read_job(job_id)
+        if job["status"] != REVIEW:
+            raise HTTPException(409, "This video isn't waiting for a review.")
+        try:
+            picked = (clipper.auto_review(job["picked"]) if edits is None else
+                      clipper.apply_review(job["picked"], edits, job_sentences(job), job["duration"]))
+        except clipper.ClipperError as e:
+            raise HTTPException(400, str(e))
+        folder = job_dir(job_id)
+        for i, c in enumerate(picked, 1):  # a previewed voice only counts for the line it read
+            voice = saved_voice(folder, i)
+            if voice and (c["dropped"] or c.get("voice_for") != c.get("voiceover")):
+                os.remove(voice)
+        job.update(picked=picked, reviewed=True, status="queued", step="queued", progress=None,
+                   message="Waiting for the previous video to finish", warning=note)
+        write_job(job)
+    worker.submit(run_job, job, "", None)
+    return job
+
+
+@app.get("/api/jobs/{job_id}/review")
+def review_data(job_id: str):
+    job = read_job(job_id)
+    if job["status"] != REVIEW:
+        raise HTTPException(409, "This video isn't waiting for a review.")
+    return {"clips": job["picked"], "sentences": job_sentences(job), "intro": job.get("intro", True),
+            "keep_min": clipper.KEEP_MIN, "keep_max": clipper.KEEP_MAX, "max_parts": clipper.MAX_PARTS}
+
+
+class ReviewBody(BaseModel):
+    clips: list
+
+
+@app.post("/api/jobs/{job_id}/review")
+def approve_picks(job_id: str, body: ReviewBody):
+    return finish_review(job_id, body.clips)
+
+
+class VoiceBody(BaseModel):
+    i: int
+    text: str
+
+
+@app.post("/api/jobs/{job_id}/review/voice")
+def preview_voice(job_id: str, body: VoiceBody):
+    """Record a clip's hook line now, to hear it before approving. It's the real
+    voice: kept for the clip if the line doesn't change again."""
+    job, folder, text = read_job(job_id), job_dir(job_id), body.text.strip()[:160]
+    if job["status"] != REVIEW or not 1 <= body.i <= len(job["picked"]):
+        raise HTTPException(409, "This video isn't waiting for a review.")
+    if not text:
+        raise HTTPException(400, "Write the hook line first.")
+    old = saved_voice(folder, body.i)
+    if old:
+        os.remove(old)
+    try:
+        path = clipper.speak(text, use_keys(), os.path.join(folder, f"voice_{body.i:02d}.clean"))
+    except clipper.ClipperError as e:
+        raise HTTPException(502, f"Couldn't record the voice: {e}")
+    with lock:
+        job = read_job(job_id)
+        job["picked"][body.i - 1]["voice_for"] = text
+        write_job(job)
+    return {"url": f"/library/{urllib.parse.quote(job_id)}/{urllib.parse.quote(os.path.basename(path))}"
+                   f"?v={int(time.time())}"}
+
+
+def auto_approve():
+    """Reviews left alone past auto_minutes() go ahead with the clips scoring 85+."""
+    while True:
+        time.sleep(30)
+        minutes = auto_minutes()
+        if not minutes:
+            continue
+        for job in list_jobs():
+            if job["status"] == REVIEW and time.time() - job.get("review_since", time.time()) > minutes * 60:
+                try:
+                    finish_review(job["id"], None, note=f"No review within {minutes:g} min: kept the clips "
+                                                        f"scoring {clipper.REVIEW_KEEP_SCORE}+.")
+                    log.info("job %s: review auto-approved", job["id"])
+                except Exception:
+                    log.exception("job %s: auto-approving the review failed", job["id"])
 
 
 def mark_interrupted():
@@ -813,10 +892,7 @@ def thumb_job(job_id, n):
         update_clip(job_id, n, thumb=name, thumb_v=int(time.time()), thumb_status=None, thumb_error=None)
     except Exception as e:
         log.exception("job %s: thumbnail for clip %d failed", job_id, n)
-        message = str(e)
-        if not use_keys()["vertex"] and ("429" in message or "quota" in message.lower()):
-            message = "Thumbnails use Nano Banana, which has no free tier: turn on Google Cloud credit in Keys."
-        update_clip(job_id, n, thumb_status=None, thumb_error=f"Couldn't make the thumbnail: {message}"[:400])
+        update_clip(job_id, n, thumb_status=None, thumb_error=f"Couldn't make the thumbnail: {e}"[:400])
 
 
 @app.post("/api/jobs/{job_id}/clips/{n}/thumbnail")
@@ -885,13 +961,6 @@ def update_clip(job_id, n, **changes):
     with lock:
         job = read_job(job_id)
         job["clips"][n - 1].update(changes)
-        write_job(job)
-
-
-def set_voice_requests(job_id, requests):
-    with lock:
-        job = read_job(job_id)
-        job["voice_requests"] = requests
         write_job(job)
 
 
@@ -1078,15 +1147,8 @@ def render_edited(job_id, n, edl):
                 os.remove(voice)
             update_clip(job_id, n, edit_status="Recording the new hook voice…")
             voice = server_voices(folder, [{"i": i, "text": line}], use_keys()).get(i)
-            if not voice and cloud_only():
-                clip["edit_warning"] = "The hook has no voice: Google's voice failed (Google Cloud only is on)."
-            elif not voice:  # Gemini's voice unavailable: the open page records it with Puter
-                set_voice_requests(job_id, [{"i": i, "text": line}])
-                log.info("hook text for clip %d: %r", i, line)
-                update_clip(job_id, n, edit_status="Recording the new hook voice… (keep Tiny Clipper open)")
-                voices, clip["edit_warning"] = collect_voices(folder, [i])
-                set_voice_requests(job_id, [])
-                voice = voices.get(i)
+            if not voice:
+                clip["edit_warning"] = NO_VOICE
             clip["voiceover"] = line
 
         plan = None
@@ -1131,7 +1193,6 @@ def render_edited(job_id, n, edl):
         update_clip(job_id, n, **clip)
     except Exception as e:  # keep the old clip and say why
         log.exception("job %s: editing clip %d failed", job_id, n)
-        set_voice_requests(job_id, [])
         update_clip(job_id, n, editing=False, edit_status=None, edit_error=f"Couldn't render the edit: {e}")
 
 
@@ -1231,6 +1292,7 @@ def migrate_library():
 
 migrate_library()
 mark_interrupted()
+threading.Thread(target=auto_approve, daemon=True).start()
 app.mount("/library", StaticFiles(directory=LIBRARY), name="library")
 
 
@@ -1258,7 +1320,7 @@ def index(code: str = "", state: str = "", error: str = ""):
         except (social.SocialError, httpx.HTTPError) as e:
             note = "social_error=" + urllib.parse.quote(str(e))
         return RedirectResponse(f"/?{note}")
-    # no-store: a reload must always run the latest page (it records the hook voices)
+    # no-store: a reload must always run the latest page
     return FileResponse(os.path.join(ROOT, "web", "index.html"), headers={"Cache-Control": "no-store"})
 
 
